@@ -1,0 +1,51 @@
+{
+    "name": "@luke_choi/refactoring",
+    "version": "0.0.0",
+    "description": "project for refactoring study",
+    "scripts": {
+      "prebuild": "rimraf dist",
+      "build": "tsc",
+      "prepublishOnly": "tsc",
+      "format": "prettier --write \"src/**/*.ts\"",
+      "test:watch": "jest --watch",
+      "test:cov": "jest --coverage",
+      "deploy": "npm publish"
+    },
+    "keywords": [
+      "type-safe",
+      "prototype",
+      "utility-types",
+      "iterable/iterator",
+      "ES6"
+    ],
+    "author": "luke_choi",
+    "license": "MIT",
+    "devDependencies": {
+      "@trivago/prettier-plugin-sort-imports": "^4.3.0",
+      "@types/jest": "^29.5.11",
+      "jest": "^29.7.0",
+      "prettier": "^3.1.0",
+      "rimraf": "^5.0.5",
+      "ts-jest": "^29.1.1",
+      "ts-node": "^10.9.2",
+      "ts-patch": "^3.1.1",
+      "typescript": "^5.3.2",
+      "typia": "^5.3.5"
+    },
+    "jest": {
+      "moduleFileExtensions": [
+        "js",
+        "ts"
+      ],
+      "rootDir": ".",
+      "testRegex": ".*\\.spec\\.ts$",
+      "transform": {
+        "^.+\\.(t|j)s$": "ts-jest"
+      },
+      "collectCoverageFrom": [
+        "**/*.(t|j)s"
+      ],
+      "coverageDirectory": "./coverage",
+      "testEnvironment": "node"
+    }
+  }
