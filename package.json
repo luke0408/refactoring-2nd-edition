@@ -9,7 +9,8 @@
     "format": "prettier --write \"src/**/*.ts\"",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
-    "deploy": "npm publish"
+    "deploy": "npm publish",
+    "test": "jest"
   },
   "keywords": [
     "type-safe",
