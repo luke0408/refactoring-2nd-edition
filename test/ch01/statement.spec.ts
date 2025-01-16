@@ -6,8 +6,14 @@ describe('StatementTest', () => {
     let playsData: PlayType.Plays;
 
     beforeAll(async () => {
-        invoiceData = JSON.parse(require('fs').readFileSync('src/ch01/data/invoice.json', 'utf-8'));
-        playsData = JSON.parse(require('fs').readFileSync('src/ch01/data/plays.json', 'utf-8'))
+        const invoiceJson: string = require('fs').readFileSync('src/ch01/data/invoice.json', 'utf-8');
+        const playsJson: string = require('fs').readFileSync('src/ch01/data/plays.json', 'utf-8');
+
+        invoiceData = JSON.parse(invoiceJson);
+        playsData = JSON.parse(playsJson);
+    
+        console.log(playsJson + '\n' + typeof playsJson);
+        console.dir(playsData, { depth: null });
     });
     
     it('statement는 string 결과 값을 도출할 수 있다.', async () => {
