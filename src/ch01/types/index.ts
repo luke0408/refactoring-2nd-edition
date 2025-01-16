@@ -19,8 +19,10 @@ export declare namespace InvoiceType {
     audience: number;
   };
 
-  export type Invoice = {
+  type Invoice = {
     customer: string;
-    performances: PerformanceInfo[];
+    performances: Array<PerformanceInfo>;
   };
+
+  type Invoices = Array<Invoice>;
 }
