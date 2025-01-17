@@ -61,12 +61,15 @@
 ]
 ```
 
-공연료 청구서를 출력하는 코드는 다음과 같이 [statement](../../src/ch01/statement/index.ts) 함수로 구현된다.
+공연료 청구서를 출력하는 코드는 다음과 같이 `statement()` 함수로 구현된다.
 
 ```ts
 import { InvoiceType, PlayType } from '../types';
 
-export const statement = (invoice: InvoiceType.Invoice, plays: PlayType.Plays) => {
+export function statement(
+  invoice: InvoiceType.Invoice, 
+  plays: PlayType.Plays
+): string {
   let totalAmount: number = 0;
   let volumeCredits: number = 0;
   let result: string = `청구 내역 (고객명: ${invoice.customer})\n`;
@@ -156,7 +159,7 @@ export const statement = (invoice: InvoiceType.Invoice, plays: PlayType.Plays) =
 
 리팩토링의 첫 단계는 코드가 잘 작동하는지 확인해줄 테스트 코드를 만드는 것이다.
 
-[statement() 함수에 대한 테스트 코드](../../test/ch01/statement.spec.ts)는 다음과 같이 작성했다.
+statement() 함수에 대한 테스트 코드는 다음과 같이 작성했다.
 
 ```ts
 import { statement } from '../../src/ch01/statement';
@@ -192,3 +195,265 @@ describe('StatementTest', () => {
 ```
 
 위 테스트 코드는 jest 라이브러리를 사용해 작성했으며 `npm run test`를 통해 실행 가능하다.
+
+## 1.4 statement() 함수 쪼개기
+
+statement() 함수 중간에는 switch 문이 있다. 이 switch 문을 살펴보면 한 번의 공연에 대한 요금을 계산하고 있다.
+
+```ts
+// 문제의 스위치문 
+switch (play?.type) {
+  case 'tragedy':
+    thisAmount = 40000;
+    if (perf.audience > 30) {
+      thisAmount += 1000 * (perf.audience - 30);
+    }
+    break;
+   case 'comedy':
+    thisAmount = 30000;
+    if (perf.audience > 20) {
+  thisAmount += 10000 + 500 * (perf.audience - 20);
+    }
+    thisAmount += 300 * perf.audience;
+    break;
+  default:
+    throw new Error(`알 수 없는 장르: ${play?.type}`);
+}
+```
+
+이러한 사실은 코드 분석을 하면서 얻은 정보다.
+
+워드 커닝햄(Ward Cunningham) 이 말하길, 이런 식으로 파악한 정보는 휘발성이 높기로 악명 높은 저장 장치인 내 머릿속에 기록되므로, 잊지 않으려면 재빨리 코드에 반영해야 한다.
+
+그러면 다음번에 코드를 볼 때, 다시 분석하지 않아도 코드 스스로가 자신이 하는 일이 무엇인지 이야기해줄 것이다.
+
+여기서는 코드 조각을 별도 함수로 추출하는 방식으로 앞서 파악한 정보를 코드에 반영할 것이다.
+
+추출한 함수에는 그 코드가 하는 일을 설명하는 이름을 지워준다. 이름은 amountFor(performance) 정도면 적당해 보인다.
+
+먼저 별도 함수로 빼냈을 때 유효범위를 벗어나는 변수, 즉 새 함수에서 필요한 변수들을 뽑는다.
+
+여기서는 performance, play, thisAmount 가 있다.
+
+뽑은 변수에서 performance 와 play 같은 경우는 값을 참조만 하지 변경하지 않으니까 새 함수의 파라미터로 전달하면 된다.
+
+그치만 thisAmount 같은 경우는 새 함수에서 변경을 하는데 이는 주의해서 다뤄야한다.
+
+여기서는 새 함수에서 변경하는 함수가 thisAmount 밖에 없으니까 이것을 새 함수에서 선언하고 리턴해주는 방식으로 사용하면 된다.
+
+이렇게 리팩토링한 결과는 다음과 같다.
+
+```ts
+export function statement(
+  invoice: InvoiceType.Invoice, 
+  plays: PlayType.Plays
+): string {
+  let totalAmount: number = 0;
+  let volumeCredits: number = 0;
+  let result: string = `청구 내역 (고객명: ${invoice.customer})\n`;
+
+  const format = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+  }).format;
+
+  for (let perf of invoice.performances) {
+    const play = plays[perf.playID];
+    let thisAmount = 0;
+
+    thisAmount = amountFor(perf, play);
+
+    // 포인트를 제공한다.
+    volumeCredits += Math.max(perf.audience - 30, 0);
+
+    // 희극 관객 5명마다 추가 포인트를 제공한다.
+    if ('comedy' === play?.type) volumeCredits += Math.floor(perf.audience / 5);
+
+    // 청구 내역을 출력한다.
+    result += ` ${play?.name}: ${format(thisAmount / 100)} (${perf.audience}석)\n`;
+    totalAmount += thisAmount;
+  }
+
+  result += `총액: ${format(totalAmount / 100)}\n`;
+  result += `적립 포인트: ${volumeCredits}점\n`;
+
+  return result;
+};
+```
+
+```ts
+function amountFor (
+  play: PlayType.PlayInfo,
+  performance: InvoiceType.PerformanceInfo
+): number {
+  let thisAmount: number = 0;
+  switch (play?.type) {
+    case 'tragedy':
+      thisAmount = 40000;
+      if (performance.audience > 30) {
+        thisAmount += 1000 * (performance.audience - 30);
+      }
+      break;
+    case 'comedy':
+      thisAmount = 30000;
+      if (performance.audience > 20) {
+        thisAmount += 10000 + 500 * (performance.audience - 20);
+      }
+      thisAmount += 300 * performance.audience;
+      break;
+    default:
+      throw new Error(`알 수 없는 장르: ${play?.type}`);
+  }
+  return thisAmount;
+};
+```
+
+이제 test를 돌려 잘 작동하는 것을 확인하자. <br>
+*(이후에는 test 코드가 변경되는 지점에서만 test 결과를 첨부하겠다.)*
+
+```bash
+$ ~/refactoring-2nd-edition{master}$ npm run test
+
+> refactoring@0.0.0 test
+> jest
+
+ PASS  test/ch01/statement.spec.ts (6.629 s)
+  StatementTest
+    ✓ statement는 string 결과 값을 도출할 수 있다. (24 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       1 passed, 1 total
+Snapshots:   0 total
+Time:        6.736 s, estimated 7 s
+Ran all test suites.
+```
+
+다행이도 테스트는 한번에 통과했다. 그리고 함수를 추출했으니 추출된 함수 코드를 자세히 들여다보면서 지금보다 명확하게 표현할 수 있는 간단한 방법은 없는지 검토한다.
+
+가장 먼저 변수의 이름을 더 명확하게 바꿔보자. thisAmount 의 이름은 result 로 변경하는게 가능하다.
+
+### Play 변수 제거하기
+
+amountFor()의 매개변수를 살펴보면서 이 값들이 어디서 오는지 알아보자. preformance는 반복문을 돌때마다 변경되어 들어오는 반면 play는 개별 공연(preformence)에서 오기 때문에 사실 매개변수로 전달할 필요가 없다.
+
+단순하게 이 값을 계산해주는 함수를 만들어 amountFor() 내부에서 호출하기만 하면 된다. 
+
+마틴 파울러는 긴 함수를 잘게 쪼갤 때마다 play 같은 변수를 최대한 제거한다. 이런 임시 변수들 때문에 로컬 범위에 존재하는 이름이 늘어나서 추출 작업이 복잡해 지는 것을 방지할 수 있다.
+
+이를 해결해주는 리팩터링으로는 `임시 변수를 질의 함수로 바꾸기` 기법을 사용할 수 있다.
+
+이제 다음과 같이 변경된 코드를 볼 수 있다.
+
+```ts
+function playFor(
+  performance: InvoiceType.PerformanceInfo
+): PlayType.PlayInfo {
+  return plays[performance.playID];
+};
+```
+
+```ts
+export function statement (
+  invoice: InvoiceType.Invoice, 
+  plays: PlayType.Plays
+): string {
+  let totalAmount: number = 0;
+  let volumeCredits: number = 0;
+  let result: string = `청구 내역 (고객명: ${invoice.customer})\n`;
+
+  const format = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+  }).format;
+
+  for (let perf of invoice.performances) {
+    const play = playFor(perf); // <-- 우변을 함수로 변경
+    let thisAmount = 0;
+
+    thisAmount = amountFor(play, perf);
+
+    // 포인트를 제공한다.
+    volumeCredits += Math.max(perf.audience - 30, 0);
+
+    // 희극 관객 5명마다 추가 포인트를 제공한다.
+    if ('comedy' === play?.type) volumeCredits += Math.floor(perf.audience / 5);
+
+    // 청구 내역을 출력한다.
+    result += ` ${play?.name}: ${format(thisAmount / 100)} (${perf.audience}석)\n`;
+    totalAmount += thisAmount;
+  }
+  
+  result += `총액: ${format(totalAmount / 100)}\n`;
+  result += `적립 포인트: ${volumeCredits}점\n`;
+  
+  return result;
+};
+```
+
+이렇게 지역 변수를 제거하면 유효 범위를 신경써야할 대상이 줄어들기 때문에 함수 추출하기 작업이 훨씬 쉬워진다.
+
+이제 다시 statement() 함수를 보면, playFor() 함수를 통해 play를 구하게 되었으니 `변수 인라인 하기`를 통해 매개변수를 제거 할 수 있게 되었다.
+
+이번에 제거하게 될 매개변수는 `play`와 `thisAmount` 이다.
+
+```ts
+function amountFor (
+  performance: InvoiceType.PerformanceInfo
+): number {
+  let thisAmount: number = 0;
+  switch (playFor(performance).type) {
+    case 'tragedy':
+      thisAmount = 40000;
+      if (performance.audience > 30) {
+        thisAmount += 1000 * (performance.audience - 30);
+      }
+      break;
+    case 'comedy':
+      thisAmount = 30000;
+      if (performance.audience > 20) {
+        thisAmount += 10000 + 500 * (performance.audience - 20);
+      }
+      thisAmount += 300 * performance.audience;
+      break;
+    default:
+      throw new Error(`알 수 없는 장르: ${playFor(performance).type}`);
+  }
+  return thisAmount;
+};
+```
+
+```ts
+export function statement (
+  invoice: InvoiceType.Invoice, 
+  plays: PlayType.Plays
+): string {
+  let totalAmount: number = 0;
+  let volumeCredits: number = 0;
+  let result: string = `청구 내역 (고객명: ${invoice.customer})\n`;
+
+  const format = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+  }).format;
+
+  for (let perf of invoice.performances) {
+    // 포인트를 제공한다.
+    volumeCredits += Math.max(perf.audience - 30, 0);
+
+    // 희극 관객 5명마다 추가 포인트를 제공한다.
+    if ('comedy' === playFor(perf).type) volumeCredits += Math.floor(perf.audience / 5);
+
+    // 청구 내역을 출력한다.
+    result += ` ${playFor(perf).name}: ${format(amountFor(perf) / 100)} (${perf.audience}석)\n`;
+    totalAmount += amountFor(perf);
+  }
+  
+  result += `총액: ${format(totalAmount / 100)}\n`;
+  result += `적립 포인트: ${volumeCredits}점\n`;
+  
+  return result;
+}
+```

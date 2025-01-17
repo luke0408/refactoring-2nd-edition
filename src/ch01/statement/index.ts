@@ -22,20 +22,15 @@ export function statement (
   }).format;
 
   for (let perf of invoice.performances) {
-    const play = playFor(perf);
-    let thisAmount = 0;
-
-    thisAmount = amountFor(play, perf);
-
     // 포인트를 제공한다.
     volumeCredits += Math.max(perf.audience - 30, 0);
 
     // 희극 관객 5명마다 추가 포인트를 제공한다.
-    if ('comedy' === play?.type) volumeCredits += Math.floor(perf.audience / 5);
+    if ('comedy' === playFor(perf).type) volumeCredits += Math.floor(perf.audience / 5);
 
     // 청구 내역을 출력한다.
-    result += ` ${play?.name}: ${format(thisAmount / 100)} (${perf.audience}석)\n`;
-    totalAmount += thisAmount;
+    result += ` ${playFor(perf).name}: ${format(amountFor(perf) / 100)} (${perf.audience}석)\n`;
+    totalAmount += amountFor(perf);
   }
   
   result += `총액: ${format(totalAmount / 100)}\n`;
@@ -58,16 +53,14 @@ export function statement (
   /**
    * 청구 내역에 대한 금액을 구한다.
    * 
-   * @param play 
    * @param performance 
    * @returns 
    */
   function amountFor (
-    play: PlayType.PlayInfo,
     performance: InvoiceType.PerformanceInfo
   ): number {
     let thisAmount: number = 0;
-    switch (play?.type) {
+    switch (playFor(performance).type) {
       case 'tragedy':
         thisAmount = 40000;
         if (performance.audience > 30) {
@@ -82,7 +75,7 @@ export function statement (
         thisAmount += 300 * performance.audience;
         break;
       default:
-        throw new Error(`알 수 없는 장르: ${play?.type}`);
+        throw new Error(`알 수 없는 장르: ${playFor(performance).type}`);
     }
     return thisAmount;
   };
