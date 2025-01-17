@@ -7,7 +7,7 @@ export declare namespace PlayType {
     type: string;
   };
 
-  type Plays = Map<string, PlayInfo>;
+  type Plays = Record<string, PlayInfo>;
 }
 
 /**
