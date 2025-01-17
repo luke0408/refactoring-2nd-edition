@@ -31,10 +31,10 @@ export const statement = (invoice: InvoiceType.Invoice, plays: PlayType.Plays) =
         break;
       default:
         throw new Error(`알 수 없는 장르: ${play?.type}`);
-      }
+    }
 
     // 포인트를 제공한다.
-    volumeCredits += Math.max(perf.audience - 30 , 0);
+    volumeCredits += Math.max(perf.audience - 30, 0);
 
     // 희극 관객 5명마다 추가 포인트를 제공한다.
     if ('comedy' === play?.type) volumeCredits += Math.floor(perf.audience / 5);

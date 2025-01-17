@@ -6,7 +6,7 @@
     "prebuild": "rimraf dist",
     "build": "tsc",
     "prepublishOnly": "tsc",
-    "format": "prettier --write \"src/**/*.ts\"",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "deploy": "npm publish",
