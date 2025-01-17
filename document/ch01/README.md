@@ -21,7 +21,7 @@
 ```json
 {
   "hamlet": {
-    "name": "hamlet",
+    "name": "Hamlet",
     "type": "tragedy"
   },
   "as-like": {
@@ -78,11 +78,11 @@ export const statement = (invoice: InvoiceType.Invoice, plays: PlayType.Plays) =
   }).format;
 
   for (let perf of invoice.performances) {
-    const play = plays.get(perf.playID);
+    const play = plays[perf.playID];
     let thisAmount = 0;
 
     switch (play?.type) {
-      case 'targedy':
+      case 'tragedy':
         thisAmount = 40000;
         if (perf.audience > 30) {
           thisAmount += 1000 * (perf.audience - 30);
@@ -97,10 +97,10 @@ export const statement = (invoice: InvoiceType.Invoice, plays: PlayType.Plays) =
         break;
       default:
         throw new Error(`알 수 없는 장르: ${play?.type}`);
-      }
+    }
 
     // 포인트를 제공한다.
-    volumeCredits += Math.max(perf.audience - 30 , 0);
+    volumeCredits += Math.max(perf.audience - 30, 0);
 
     // 희극 관객 5명마다 추가 포인트를 제공한다.
     if ('comedy' === play?.type) volumeCredits += Math.floor(perf.audience / 5);
@@ -121,9 +121,74 @@ export const statement = (invoice: InvoiceType.Invoice, plays: PlayType.Plays) =
 
 ```text
 청구내역 (고객명: BigCo)
-hamlet: $650 55석
-As You Like It: $580 35석
-Othello: $500 40석
-총액: $1730
+ Hamlet: $650.00 (55석)
+ As You Like It: $580.00 (35석)
+ Othello: $500.00 (40석)
+총액: $1,730.00
 적립 포인트: 47점
 ```
+
+## 1.2 예시 프로그램을 본 소감
+
+당자 지금의 코드만 본다면 특별히 애써 이해해야할 구조도 없고 기능도 잘 작동하기 때문에 큰 문제가 없다고 여겨진다. 단순히 "지저분하다" 라는 이유로 불평하는 것은 프로그램을 너무 미적으로 판단하는 것은 아닐까?
+
+컴파일러는 지저분한 코드이던지, 미적인 코드이던지 전혀신경쓰지 않는다. 하지만, 그 코드를 수정하려면 사람이 개입되고, 사람은 코드의 미적 상태에 계민하다.
+
+사람은 설계가 나쁜 시스템을 수정하기 어렵다.
+
+원하는 동작을 수행하도록 하기 위해 수정해야 할 부분을 찾고, 기존 코드와 잘 맞물려 작동하게 할 방법을 강구하기 어렵기 때문이다. 때문에 수백 줄짜리 코드를 수정할 때 먼저 프로그램의 작동 박식을 더 쉽게 파악할 수 있도록 코드를 여러 함수의 요소로 재구성하는 것을 추천한다.
+
+프로그램의 구조가 빈약하다면 대체로 구조부터 바로 잡은 뒤에 기능을 수정하는 편이 작업하기 훨씬 수월하다.
+
+코드에서 사용자의 입맞에 맞게 수정할 부분을 몇가지 발견했다.
+
+[요구사항 추가]
+- 청구 내역을 HTML의 형태로 출력하는 기능 구현
+- 더욱 다양한 장르가 추가되며 이에 따른 공연료 및 적립 포인트 계산법 수정 필요
+
+[주의점]
+- 기존의 statement() 함수를 복제하는 것은 DRY 원칙 위반
+- 기존의 statement() 함수에 if문 분기를 추가해 기능을 구현하는 것은 복잡도가 증가되는 문제 발생
+
+리펙토링이 필요한 이유는 이와같은 변경점이 발생하기 때문이다. 잘 작동하고 나중에 변경할 일이 없다면 코드를 현재 상태로 나둬도 문제가 없지만, 사용자가 있는 대부분의 코드는 항상 변화한다.
+
+## 1.3 리팩토링의 첫 단계
+
+리팩토링의 첫 단계는 코드가 잘 작동하는지 확인해줄 테스트 코드를 만드는 것이다.
+
+[statement() 함수에 대한 테스트 코드](../../test/ch01/statement.spec.ts)는 다음과 같이 작성했다.
+
+```ts
+import { statement } from '../../src/ch01/statement';
+import { InvoiceType, PlayType } from '../../src/ch01/types';
+
+describe('StatementTest', () => {
+  let invoiceData: InvoiceType.Invoices;
+  let playsData: PlayType.Plays;
+
+  beforeAll(async () => {
+    const invoiceJson: string = require('fs').readFileSync('src/ch01/data/invoice.json', 'utf-8');
+    const playsJson: string = require('fs').readFileSync('src/ch01/data/plays.json', 'utf-8');
+
+    invoiceData = JSON.parse(invoiceJson);
+    playsData = JSON.parse(playsJson);
+
+    console.log(playsJson + '\n' + typeof playsJson);
+    console.dir(playsData, { depth: null });
+  });
+
+  it('statement는 string 결과 값을 도출할 수 있다.', async () => {
+    const result = statement(invoiceData[0], playsData);
+    expect(result).toBe(
+      '청구 내역 (고객명: BigCo)\n' +
+      ' Hamlet: $650.00 (55석)\n' +
+      ' As You Like It: $580.00 (35석)\n' +
+      ' Othello: $500.00 (40석)\n' +
+      '총액: $1,730.00\n' +
+      '적립 포인트: 47점\n'
+    );
+  });
+});
+```
+
+위 테스트 코드는 jest 라이브러리를 사용해 작성했으며 `npm run test`를 통해 실행 가능하다.
