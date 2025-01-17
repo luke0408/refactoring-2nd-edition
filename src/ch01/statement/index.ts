@@ -12,11 +12,11 @@ export const statement = (invoice: InvoiceType.Invoice, plays: PlayType.Plays) =
   }).format;
 
   for (let perf of invoice.performances) {
-    const play = plays.get(perf.playID);
+    const play = plays[perf.playID];
     let thisAmount = 0;
 
     switch (play?.type) {
-      case 'targedy':
+      case 'tragedy':
         thisAmount = 40000;
         if (perf.audience > 30) {
           thisAmount += 1000 * (perf.audience - 30);
