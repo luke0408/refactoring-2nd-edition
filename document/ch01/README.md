@@ -1190,3 +1190,493 @@ describe('StatementTest', () => {
   });
 });
 ```
+
+## 1.7 중간 점검: 두 파일(과 두 단계)로 분리
+
+지금까지 작성한 코드의 상태를 점검해보자. 현재의 코드는 두개의 파일로 구성된다.
+
+> statement/index.ts
+
+```ts
+import { InvoiceType, PlayType, StatementType } from '../types';
+import { createStatementData } from './createStatementData';
+
+/**
+ * 연극에 대한 청구 내역과 총액, 적립 포인트를 반환한다.
+ *
+ * @param invoice
+ * @param plays
+ * @returns
+ */
+export function statement(invoice: InvoiceType.Invoice, plays: PlayType.Plays): string {
+  return renderPlainText(createStatementData(invoice, plays));
+}
+
+/**
+ * 연극에 대한 청구 내역과 총액, 적립 포인트를 html의 형태로 반환한다.
+ *
+ * @param invoice
+ * @param plays
+ * @returns
+ */
+export function htmlStatement(invoice: InvoiceType.Invoice, plays: PlayType.Plays): string {
+  return renderHtml(createStatementData(invoice, plays));
+}
+
+/**
+ * 청구 내역을 html로 반환한다.
+ *
+ * @param data
+ * @returns
+ */
+function renderHtml(data: StatementType.StatementData) {
+  let result = `<h1>청구 내역 (고객명: ${data.customer})</h1>\n`;
+  result += '<table>\n';
+  result += '<tr><th>연극</th><th>좌석 수</th><th>금액</th></tr>';
+  for (let perf of data.performances) {
+    result += `<tr><td>${perf.play.name}</td><td>(${perf.audience}석)</td>`;
+    result += `<td>${usd(perf.amount)}</td></tr>\n`;
+  }
+  result += '</table>\n';
+  result += `<p>총액: <em>${usd(data.totalAmount)}</em></p>\n`;
+  result += `<p>적립 포인트: <em>${data.totalVolumeCredits}</em>점</p>\n`;
+
+  return result;
+}
+
+/**
+ * 청구 내역을 text로 출력한다.
+ *
+ * @param data
+ * @param plays
+ * @returns
+ */
+function renderPlainText(data: StatementType.StatementData) {
+  let result: string = `청구 내역 (고객명: ${data.customer})\n`;
+
+  for (let perf of data.performances) {
+    result += ` ${perf.play.name}: ${usd(perf.amount)} (${perf.audience}석)\n`;
+  }
+
+  result += `총액: ${usd(data.totalAmount)}\n`;
+  result += `적립 포인트: ${data.totalVolumeCredits}점\n`;
+
+  return result;
+}
+
+/**
+ * USD 화패 단위에 맞게 값을 수정한다.
+ *
+ * @param number
+ * @returns
+ */
+function usd(number: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+  }).format(number / 100);
+}
+```
+
+> statement/createStatementData.ts
+
+```ts
+import { InvoiceType, PlayType, StatementType } from '../types';
+
+/**
+ * statement에 필요한 데이터를 처리한다.
+ *
+ * @param invoice
+ * @param plays
+ * @returns
+ */
+export function createStatementData(invoice: InvoiceType.Invoice, plays: PlayType.Plays) {
+  const result: StatementType.StatementData = {} as StatementType.StatementData;
+  result.customer = invoice.customer;
+  result.performances = invoice.performances.map(enrichPerformance);
+  result.totalAmount = totalAmount(result);
+  result.totalVolumeCredits = totalVolumeCredits(result);
+  return result;
+
+  /**
+   * 공연 정보를 추가한다.
+   *
+   * @param performance
+   * @returns
+   */
+  function enrichPerformance(performance: InvoiceType.PerformanceInfo): StatementType.PerformanceInfo {
+    const result = Object.assign({}, performance) as StatementType.PerformanceInfo;
+    result.play = playFor(result);
+    result.amount = amountFor(result);
+    result.volumeCredits = volumeCreditsFor(result);
+
+    return result;
+  }
+
+  /**
+   * performance를 통해 play 값을 구한다.
+   *
+   * @param performance
+   * @returns
+   */
+  function playFor(performance: InvoiceType.PerformanceInfo): PlayType.PlayInfo {
+    return plays[performance.playID];
+  }
+
+  /**
+   * 청구 내역에 대한 금액을 구한다.
+   *
+   * @param performance
+   * @returns
+   */
+  function amountFor(performance: StatementType.PerformanceInfo): number {
+    let thisAmount: number = 0;
+    switch (performance.play.type) {
+      case 'tragedy':
+        thisAmount = 40000;
+        if (performance.audience > 30) {
+          thisAmount += 1000 * (performance.audience - 30);
+        }
+        break;
+      case 'comedy':
+        thisAmount = 30000;
+        if (performance.audience > 20) {
+          thisAmount += 10000 + 500 * (performance.audience - 20);
+        }
+        thisAmount += 300 * performance.audience;
+        break;
+      default:
+        throw new Error(`알 수 없는 장르: ${performance.play.type}`);
+    }
+    return thisAmount;
+  }
+
+  /**
+   * totalAmount를 구한다.
+   *
+   * @returns
+   */
+  function totalAmount(data: StatementType.StatementData) {
+    return data.performances.reduce((total, p) => total + p.amount, 0);
+  }
+
+  /**
+   * volumeCredites를 구한다.
+   *
+   * @returns
+   */
+  function totalVolumeCredits(data: StatementType.StatementData) {
+    return data.performances.reduce((total, p) => total + p.volumeCredits, 0);
+  }
+
+  /**
+   * 적립 포인트를 계산한다.
+   *
+   * @param performance
+   * @returns
+   */
+  function volumeCreditsFor(performance: StatementType.PerformanceInfo): number {
+    let volumeCredits = 0;
+    volumeCredits += Math.max(performance.audience - 30, 0);
+
+    if ('comedy' === performance.play.type) {
+      volumeCredits += Math.floor(performance.audience / 5);
+    }
+
+    return volumeCredits;
+  }
+}
+```
+
+처음보다 코드량은 늘어났지만 모듈화를 통해 각부분이 하는 일과 그 부분들이 맞물려 돌아가는 과정을 파악하기 쉬워졌다. 간결함이 지혜의 정수일지 몰라도, 프로그래밍에서 만큼은 명료함이 진화할 수 있는 소프트웨어의 정수이다.
+
+그의 증거로 지금 만해도 모듈화한 덕분에 계산 코드를 중복하지 않고도 HTML 버전을 만들 수 있었다.
+
+> 캠필자들에게는 "도착했을 때보다 깔끔하게 정돈하고 떠난다"는 규칙이 있다. 프로그래밍도 마찬가지다. 항시 코드베이스를 작업 시작 전보다 건강하게(healthy) 만들어 놓고 떠나야한다.
+
+출력 로직을 더 간결하게 만들수도 있겠지만 마틴 파울러는 여기서 한번 멈추는 것을 권장한다. 그는 항상 리팩터링과 기능 개발 사이의 균형을 맞추려고 한다. 
+
+현재의 코드에서 리팩토링이 그다지 절실하게 느껴지지 않을 수 있지만 어느정도 균형점은 찾을 수 있었다. 
+
+## 1.8 다형성을 활용해 계산 코드 재구성 하기
+
+[요구사항 추가!]
+- 연극의 장르가 늘어납니다.
+- 각 장르마다 공연료와 적립 포인트 계산법이 상이합니다.
+
+새롭게 요구 사항이 추가가되었다. 현재 상태의 코드에서 변경하려면 이 계산을 수행하는 함수에서 조건문을 수정해야한다. amountFor() 함수를 보면 연극 장르에 따라 계산 방식이 달라진다는 것을 알 수 있는데, 이런 형태의 조건부 로직은 코드 수정 횟수가 늘어날수록 골칫거리로 전락하기 쉽다. 
+
+우선 이 조건부 로직을 수정해보자. 수 많은 조건부 로직 보완 방법이 있지만, 여기서는 객체지향의 핵심 특성인 다형성(ploymorphism)을 활용해보자.
+
+[작업 목표]
+- 상속 계층을 구성해서 희극 서브 클래스와 비극 서브 클래스가 각자의 구체적인 계산 로직을 정의 하도록 한다.
+- 호출 하는 쪽에서는 다형성 버전의 공연료 계산 함수를 호출하기만 하면 되도록 하여 희극이냐 비극이냐에 따라 정확한 계산 로직을 연결하는 것은 언어차원에서 지원 받도록 한다.
+- 적립 포인트의 조건부 로직도 위와 같은 형태로 수정한다.
+
+위 리팩토링 기법을 사용하려면 우선 상속 계층부터 정의해야한다. 즉, 공연료와 적립 포인트 계산 함수를 담을 클래스가 필요하다.
+
+### 공연료 계산기 만들기
+
+이번 작업의 핵심은 각 공연의 정보를 중간 데이터 구조에 채워주는 enrichPerformance() 이다. 현재 이 함수는 조건부 로직을 포함한 함수인 amountFor()과 volumeCreditsFor()를 호출하고 있다.
+
+이번에 할 일은 이 두 함수를 전용 클래스로 옮기는 작업이며, 이 클래스는 공연 관련된 데이터를 계산하는 함수들로 구성됨으로 공연료 계산기(PerformanceCalculator)라고 부르자.
+
+> PerformanceCalculator
+
+```ts
+class PerformanceCalculator {
+  constructor(
+    performance: InvoiceType.PerformanceInfo,
+    play: PlayType.PlayInfo
+  ) {
+    this.performance = performance;
+    this.play = play;
+  }
+
+  performance: InvoiceType.PerformanceInfo;
+  play: PlayType.PlayInfo;
+}
+```
+
+> enrichPerformance()
+
+```ts
+function enrichPerformance(performance: InvoiceType.PerformanceInfo): StatementType.PerformanceInfo {
+  const calculator = new PerformanceCalculator(performance, playFor(performance));
+  const result = Object.assign({}, performance) as StatementType.PerformanceInfo;
+  result.play = calculator.play;
+  result.amount = amountFor(result);
+  result.volumeCredits = volumeCreditsFor(result);
+  return result;
+}
+```
+
+### 함수들을 계산기로 옮기기
+
+클래스를 생성했으니 이제 내부 로직을 옮겨보자. 우선 공연료 계산 코드를 계산기 클래스 안으로 복사한다.
+
+> PerformanceCalculator 클래스
+
+```ts
+class PerformanceCalculator {
+  
+  ...
+
+  public get amount() : number {
+    let result: number = 0;
+    switch (this.play.type) {
+      case 'tragedy':
+        result = 40000;
+        if (this.performance.audience > 30) {
+          result += 1000 * (this.performance.audience - 30);
+        }
+        break;
+      case 'comedy':
+        result = 30000;
+        if (this.performance.audience > 20) {
+          result += 10000 + 500 * (this.performance.audience - 20);
+        }
+        result += 300 * this.performance.audience;
+        break;
+      default:
+        throw new Error(`알 수 없는 장르: ${this.play.type}`);
+    }
+    return result;
+  }
+}
+```
+
+이후 원본 함수가 방금 만든 함수로 작업을 위임 하도록 한다.
+
+```ts
+function amountFor(performance: StatementType.PerformanceInfo): number {
+  return new PerformanceCalculator(performance, playFor(performance)).amount;
+}
+```
+
+테스트를 통해 문제가 없음을 확인했다면 함수 인라인하여 새 함수를 직접 호출하도록 한다.
+
+> 테스트 결과
+
+```bash
+$ ~/refactoring-2nd-edition{master}$ npm run test
+
+> refactoring@0.0.0 test
+> jest
+
+ PASS  test/ch01/statement.spec.ts (6.793 s)
+  StatementTest
+    ✓ statement는 string 결과 값을 도출할 수 있다. (35 ms)
+    ✓ statement는 html 결과 값을 도출할 수 있다. (1 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       2 passed, 2 total
+Snapshots:   0 total
+Time:        6.888 s
+Ran all test suites.
+```
+
+> enrichPerformance()
+
+```ts
+function enrichPerformance(performance: InvoiceType.PerformanceInfo): StatementType.PerformanceInfo {
+  const calculator = new PerformanceCalculator(performance, playFor(performance));
+  const result = Object.assign({}, performance) as StatementType.PerformanceInfo;
+  result.play = calculator.play;
+  result.amount = calculator.amount;
+  result.volumeCredits = volumeCreditsFor(result);
+  return result;
+}
+```
+
+적립 포인트를 계산하는 함수도 같은 방법으로 옮긴다.
+
+> enrichPerformance()
+
+```ts
+function enrichPerformance(performance: InvoiceType.PerformanceInfo): StatementType.PerformanceInfo {
+  const calculator = new PerformanceCalculator(performance, playFor(performance));
+  const result = Object.assign({}, performance) as StatementType.PerformanceInfo;
+  result.play = calculator.play;
+  result.amount = calculator.amount;
+  result.volumeCredits = calculator.volumeCredits; // 함수 인라인 적용
+  return result;
+}
+```
+
+> PerformanceCalculator 클래스
+
+```ts
+class PerformanceCalculator {
+  
+  ...
+
+  public get volumeCredits(): number {
+    let volumeCredits = 0;
+    volumeCredits += Math.max(this.performance.audience - 30, 0);
+
+    if ('comedy' === this.play.type) {
+      volumeCredits += Math.floor(this.performance.audience / 5);
+    }
+
+    return volumeCredits;
+  }
+}
+```
+
+### 공영료 계산기를 다형성 버전으로 만들기
+
+클래스에 로직을 담았으니 이제 다향성을 지원하도록 만들어보자. 가장 먼저 할 일은 타입 코드 대신 서브클래스를 사용하도록 하는 것이다.
+
+이렇게 하려면 PerformanceCalculator의 서브클래스들을 준비하고 createStatementData() 에서 그중 적합한 서브 클래스를 사용하게 만들어야 한다.
+
+이를 위해 먼저 생성자를 팩터리 함수로 바꾸었다.
+
+> createPerformanceCalculator()
+
+```ts
+function createPerformanceCalculator(performance: InvoiceType.PerformanceInfo, play: PlayType.PlayInfo) {
+  return new PerformanceCalculator(performance, play);
+}
+```
+
+> enrichPerformance()
+
+```ts
+function enrichPerformance(performance: InvoiceType.PerformanceInfo): StatementType.PerformanceInfo {
+  const calculator = createPerformanceCalculator(performance, playFor(performance)); // 팩터리 함수 적용
+  const result = Object.assign({}, performance) as StatementType.PerformanceInfo;
+  result.play = calculator.play;
+  result.amount = calculator.amount;
+  result.volumeCredits = calculator.volumeCredits;
+
+  return result;
+}
+```
+
+팩터리 함수를 사용하면 다음과 같이 PerformanceCalculator의 서브 클래스 중에서 어느 것을 생성해서 반환할지 선택할 수 있다.
+
+> 팩터리 함수와 서브 클래스
+
+```ts
+function createPerformanceCalculator(performance: InvoiceType.PerformanceInfo, play: PlayType.PlayInfo) {
+  switch (play.type) {
+    case 'tragedy':
+      return new TragedyCalculator(performance, play);
+    case 'comedy':
+      return new ComedyCalculator(performance, play);
+    default:
+      throw new Error(`알 수 없는 장르: ${play.type}`);
+  }  
+}
+
+class TragedyCalculator extends PerformanceCalculator {
+}
+
+class ComedyCalculator extends PerformanceCalculator {
+}
+```
+
+이제 조건부 로직을 다형성으로 바꾸어 보자.
+
+> PerformanceCalculator
+
+```ts
+class PerformanceCalculator {
+  constructor(performance: InvoiceType.PerformanceInfo, play: PlayType.PlayInfo) {
+    this.performance = performance;
+    this.play = play;
+  }
+
+  performance: InvoiceType.PerformanceInfo;
+  play: PlayType.PlayInfo;
+
+  public get amount(): number {
+    throw new Error('서브 클래스에서 처리하도록 설계 되었습니다.');
+  }
+
+  public get volumeCredits(): number {
+    return Math.max(this.performance.audience - 30, 0);
+  }
+}
+```
+
+> TragedyCalculator
+
+```ts
+class TragedyCalculator extends PerformanceCalculator {
+  public get amount(): number {
+    let result = 40000;
+    if (this.performance.audience > 30) {
+      result += 1000 * (this.performance.audience - 30);
+    }
+
+    return result;
+  }
+}
+```
+
+> ComedyCalculator
+
+```ts
+class ComedyCalculator extends PerformanceCalculator {
+  public get amount(): number {
+    let result = 30000;
+    if (this.performance.audience > 20) {
+      result += 10000 + 500 * (this.performance.audience - 20);
+    }
+    result += 300 * this.performance.audience;
+
+    return result;
+  }
+
+  public get volumeCredits(): number {
+    return super.volumeCredits + Math.floor(this.performance.audience / 5);
+  }
+}
+```
+
+amount()의 경우 각 서브 클래스 별로 계산을 진행하도록 하여, PerformanceCalculator 에서 직접 호출시 에러를 발생시키도록 하였다. 
+
+volumeCredits()의 경우는 일부 장르에서만 약간씩 다를 뿐 대다수의 연극은 관객 수가 30을 넘는지 확인해야 하기 때문에 가장 일반적인 경우를 기본으로 하여 슈퍼클래스에 남겨두고 세부 내용은 오버라이드 하여 수정하도록 하였다.
