@@ -74,8 +74,7 @@ export function createStatementData(invoice: InvoiceType.Invoice, plays: PlayTyp
    * @returns
    */
   function totalAmount(data: StatementType.StatementData) {
-    return data.performances
-      .reduce((total, p) => total + p.amount, 0);
+    return data.performances.reduce((total, p) => total + p.amount, 0);
   }
 
   /**
@@ -84,8 +83,7 @@ export function createStatementData(invoice: InvoiceType.Invoice, plays: PlayTyp
    * @returns
    */
   function totalVolumeCredits(data: StatementType.StatementData) {
-    return data.performances
-      .reduce((total, p) => total + p.volumeCredits, 0);
+    return data.performances.reduce((total, p) => total + p.volumeCredits, 0);
   }
 
   /**
