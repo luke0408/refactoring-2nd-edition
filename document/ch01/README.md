@@ -1005,3 +1005,188 @@ function renderPlainText(data: StatementType.StatementData, plays: PlayType.Play
   return result;
 }
 ```
+
+이제 연극 제목도 중간 데이터 구조에서 가져오도록 추가한다. 이를 위해 공연 정보 레코드에 연극 데이터를 추가해야한다.
+
+> statement()
+
+```ts
+export function statement (
+  invoice: InvoiceType.Invoice, 
+  plays: PlayType.Plays
+): string {
+  const statementData: StatementType.StatementData = {} as StatementType.StatementData;
+  statementData.customer = invoice.customer;
+  statementData.performances = invoice.performances.map(enrichPerformance)
+
+  return renderPlainText(statementData, plays);
+
+  function enrichPerformance(performance: InvoiceType.PerformanceInfo): StatementType.PerformanceInfo {
+    const result = Object.assign({}, performance) as StatementType.PerformanceInfo;
+    return result;
+  }
+}
+```
+
+사용된 타입 구조는 나중에 설명하는 것으로 하고, 이제 연극 정보를 담을 자리가 마련됐으니 실제로 데이터를 담아보자. 
+
+playFor()과 amountFor() 그리고 적립 포인트 계산 부분을 statement()에 옮기고 renderPlainText()에서 해당 함수를 사용하던 부분을 중간 데이터를 사용하도록 수정한다.
+
+> statement()
+
+```ts
+export function statement(invoice: InvoiceType.Invoice, plays: PlayType.Plays): string {
+  const statementData: StatementType.StatementData = {} as StatementType.StatementData;
+  statementData.customer = invoice.customer;
+  statementData.performances = invoice.performances.map(enrichPerformance);
+  statementData.totalAmount = totalAmount(statementData);
+  statementData.totalVolumeCredits = totalVolumeCredits(statementData);
+
+  return renderPlainText(statementData, plays);
+
+  function enrichPerformance(performance: InvoiceType.PerformanceInfo): StatementType.PerformanceInfo {
+    const result = Object.assign({}, performance) as StatementType.PerformanceInfo;
+    result.play = playFor(result);
+    result.amount = amountFor(result);
+    result.volumeCredits = volumeCreditsFor(result);
+
+    return result;
+  }
+
+  function playFor(performance: InvoiceType.PerformanceInfo): PlayType.PlayInfo { ... }
+  function amountFor(performance: StatementType.PerformanceInfo): number { ... }
+  function totalAmount(data: StatementType.StatementData) { ... }
+  function totalVolumeCredits(data: StatementType.StatementData) { ... }
+  function volumeCreditsFor(performance: StatementType.PerformanceInfo): number { ... }
+}
+```
+
+> renderPlainText()
+
+```ts
+function renderPlainText(data: StatementType.StatementData, plays: PlayType.Plays) {
+  let result: string = `청구 내역 (고객명: ${data.customer})\n`;
+
+  for (let perf of data.performances) {
+    result += ` ${perf.play.name}: ${usd(perf.amount)} (${perf.audience}석)\n`;
+  }
+
+  result += `총액: ${usd(data.totalAmount)}\n`;
+  result += `적립 포인트: ${data.totalVolumeCredits}점\n`;
+
+  return result;
+
+  function usd(number: number): string { ... }
+}
+```
+
+이후 가볍게 반복문 파이프라인으로 바꾸기를 적용해주었다.
+
+> statement() 함수 내부
+
+```ts
+function totalAmount(data: StatementType.StatementData) {
+  return data.performances
+    .reduce((total, p) => total + p.amount, 0);
+}
+
+function totalVolumeCredits(data: StatementType.StatementData) {
+  return data.performances
+    .reduce((total, p) => total + p.volumeCredits, 0)
+}
+```
+
+이제 첫 단계인 "statement()에 필요한 데이터 처리'에 해당 하는 코드를 별도의 함수로 빼낸다.
+
+> statement()
+
+```ts
+export function statement(invoice: InvoiceType.Invoice, plays: PlayType.Plays): string {
+  return renderPlainText(createStatementData(invoice, plays));
+}
+```
+
+> createStatementData()
+
+```ts
+function createStatementData(invoice: InvoiceType.Invoice, plays: PlayType.Plays) {
+  const statementData: StatementType.StatementData = {} as StatementType.StatementData;
+  statementData.customer = invoice.customer;
+  statementData.performances = invoice.performances.map(enrichPerformance);
+  statementData.totalAmount = totalAmount(statementData);
+  statementData.totalVolumeCredits = totalVolumeCredits(statementData);
+  return statementData;
+}
+```
+
+두 단계가 명확해졌으니 각 코드를 별도의 파일에 저장하면 드디어 HTML 버전을 작성할 준비가 끝난다.
+
+HTML 버전은 간단하게 다음과 같이 작성 해보았다.
+
+> htmlStatement()
+
+```ts
+export function htmlStatement(invoice: InvoiceType.Invoice, plays: PlayType.Plays): string {
+  return renderHtml(createStatementData(invoice, plays));
+}
+```
+
+> renderHtml()
+
+```ts
+function renderHtml(data: StatementType.StatementData) {
+  let result = `<h1>청구 내역 (고객명: ${data.customer})</h1>\n`;
+  result += '<table>\n';
+  result += '<tr><th>연극</th><th>좌석 수</th><th>금액</th></tr>';
+  for (let perf of data.performances) {
+    result += `<tr><td>${perf.play.name}</td><td>(${perf.audience}석)</td>`;
+    result += `<td>${usd(perf.amount)}</td></tr>\n`;
+  }
+  result += '</table>\n';
+  result += `<p>총액: <em>${usd(data.totalAmount)}</em></p>\n`;
+  result += `<p>적립 포인트: <em>${data.totalVolumeCredits}</em>점</p>\n`;
+
+  return result;
+}
+```
+
+> statement.spec.ts
+
+```ts
+describe('StatementTest', () => {
+  let invoiceData: InvoiceType.Invoices;
+  let playsData: PlayType.Plays;
+
+  beforeAll(async () => {
+    invoiceData = JSON.parse(require('fs').readFileSync('src/ch01/data/invoice.json', 'utf-8'));
+    playsData = JSON.parse(require('fs').readFileSync('src/ch01/data/plays.json', 'utf-8'));
+  });
+
+  it('statement는 string 결과 값을 도출할 수 있다.', async () => {
+    const result = statement(invoiceData[0], playsData);
+    expect(result).toBe(
+      '청구 내역 (고객명: BigCo)\n' +
+        ' Hamlet: $650.00 (55석)\n' +
+        ' As You Like It: $580.00 (35석)\n' +
+        ' Othello: $500.00 (40석)\n' +
+        '총액: $1,730.00\n' +
+        '적립 포인트: 47점\n',
+    );
+  });
+
+  it('statement는 html 결과 값을 도출할 수 있다.', async () => {
+    const result = htmlStatement(invoiceData[0], playsData);
+    expect(result).toBe(
+      '<h1>청구 내역 (고객명: BigCo)</h1>\n' +
+        '<table>\n' +
+        '<tr><th>연극</th><th>좌석 수</th><th>금액</th></tr>' +
+        '<tr><td>Hamlet</td><td>(55석)</td><td>$650.00</td></tr>\n' +
+        '<tr><td>As You Like It</td><td>(35석)</td><td>$580.00</td></tr>\n' +
+        '<tr><td>Othello</td><td>(40석)</td><td>$500.00</td></tr>\n' +
+        '</table>\n' +
+        '<p>총액: <em>$1,730.00</em></p>\n' +
+        '<p>적립 포인트: <em>47</em>점</p>\n',
+    );
+  });
+});
+```
