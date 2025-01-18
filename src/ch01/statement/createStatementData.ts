@@ -81,6 +81,13 @@ class PerformanceCalculator {
   }
 }
 
+/**
+ * PerformanceCalculator에 대한 팩터리 함수
+ * 
+ * @param performance 
+ * @param play 
+ * @returns 
+ */
 function createPerformanceCalculator(performance: InvoiceType.PerformanceInfo, play: PlayType.PlayInfo) {
   switch (play.type) {
     case 'tragedy':
@@ -92,6 +99,9 @@ function createPerformanceCalculator(performance: InvoiceType.PerformanceInfo, p
   }
 }
 
+/**
+ * 비극 공연 관련 데이터 계산 함수를 담당하는 클래스
+ */
 class TragedyCalculator extends PerformanceCalculator {
   public get amount(): number {
     let result = 40000;
@@ -103,6 +113,9 @@ class TragedyCalculator extends PerformanceCalculator {
   }
 }
 
+/**
+ * 희극 공연 관련 데이터 계산 함수를 담당하는 클래스
+ */
 class ComedyCalculator extends PerformanceCalculator {
   public get amount(): number {
     let result = 30000;
