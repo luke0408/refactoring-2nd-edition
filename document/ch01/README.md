@@ -1680,3 +1680,134 @@ class ComedyCalculator extends PerformanceCalculator {
 amount()의 경우 각 서브 클래스 별로 계산을 진행하도록 하여, PerformanceCalculator 에서 직접 호출시 에러를 발생시키도록 하였다. 
 
 volumeCredits()의 경우는 일부 장르에서만 약간씩 다를 뿐 대다수의 연극은 관객 수가 30을 넘는지 확인해야 하기 때문에 가장 일반적인 경우를 기본으로 하여 슈퍼클래스에 남겨두고 세부 내용은 오버라이드 하여 수정하도록 하였다.
+
+## 1.9 상태 점검: 다형성을 활용하여 데이터 생성하기
+
+다형성을 추가한 결과를 살펴보자.
+
+```ts
+import { InvoiceType, PlayType, StatementType } from '../types';
+
+/**
+ * statement에 필요한 데이터를 처리한다.
+ *
+ * @param invoice
+ * @param plays
+ * @returns
+ */
+export function createStatementData(invoice: InvoiceType.Invoice, plays: PlayType.Plays) {
+  const result: StatementType.StatementData = {} as StatementType.StatementData;
+  result.customer = invoice.customer;
+  result.performances = invoice.performances.map(enrichPerformance);
+  result.totalAmount = totalAmount(result);
+  result.totalVolumeCredits = totalVolumeCredits(result);
+  return result;
+
+  /**
+   * 공연 정보를 추가한다.
+   *
+   * @param performance
+   * @returns
+   */
+  function enrichPerformance(performance: InvoiceType.PerformanceInfo): StatementType.PerformanceInfo {
+    const calculator = createPerformanceCalculator(performance, playFor(performance));
+    const result = Object.assign({}, performance) as StatementType.PerformanceInfo;
+    result.play = calculator.play;
+    result.amount = calculator.amount;
+    result.volumeCredits = calculator.volumeCredits;
+
+    return result;
+  }
+
+  /**
+   * performance를 통해 play 값을 구한다.
+   *
+   * @param performance
+   * @returns
+   */
+  function playFor(performance: InvoiceType.PerformanceInfo): PlayType.PlayInfo {
+    return plays[performance.playID];
+  }
+
+  /**
+   * totalAmount를 구한다.
+   *
+   * @returns
+   */
+  function totalAmount(data: StatementType.StatementData) {
+    return data.performances.reduce((total, p) => total + p.amount, 0);
+  }
+
+  /**
+   * volumeCredites를 구한다.
+   *
+   * @returns
+   */
+  function totalVolumeCredits(data: StatementType.StatementData) {
+    return data.performances.reduce((total, p) => total + p.volumeCredits, 0);
+  }
+}
+
+/**
+ * 공연 관련 데이터 계산 함수를 담당하는 클래스
+ */
+class PerformanceCalculator {
+  constructor(performance: InvoiceType.PerformanceInfo, play: PlayType.PlayInfo) {
+    this.performance = performance;
+    this.play = play;
+  }
+
+  performance: InvoiceType.PerformanceInfo;
+  play: PlayType.PlayInfo;
+
+  public get amount(): number {
+    throw new Error('서브 클래스에서 처리하도록 설계 되었습니다.');
+  }
+
+  public get volumeCredits(): number {
+    return Math.max(this.performance.audience - 30, 0);
+  }
+}
+
+function createPerformanceCalculator(performance: InvoiceType.PerformanceInfo, play: PlayType.PlayInfo) {
+  switch (play.type) {
+    case 'tragedy':
+      return new TragedyCalculator(performance, play);
+    case 'comedy':
+      return new ComedyCalculator(performance, play);
+    default:
+      throw new Error(`알 수 없는 장르: ${play.type}`);
+  }
+}
+
+class TragedyCalculator extends PerformanceCalculator {
+  public get amount(): number {
+    let result = 40000;
+    if (this.performance.audience > 30) {
+      result += 1000 * (this.performance.audience - 30);
+    }
+
+    return result;
+  }
+}
+
+class ComedyCalculator extends PerformanceCalculator {
+  public get amount(): number {
+    let result = 30000;
+    if (this.performance.audience > 20) {
+      result += 10000 + 500 * (this.performance.audience - 20);
+    }
+    result += 300 * this.performance.audience;
+
+    return result;
+  }
+
+  public get volumeCredits(): number {
+    return super.volumeCredits + Math.floor(this.performance.audience / 5);
+  }
+}
+```
+
+앞서 함수를 추출했을 때처럼, 이번에도 구조를 보강하면서 코드가 늘어났다. 이번 수정으로 나아진 점은 연극 장르별 계산 코드들을 함께 묶어뒀다는 것이다.
+
+이번 예를 보면서 서브 클래스를 언제 사용하면 좋을지 감을 잡을 수 있었다. 또한 JavaScript 클래스 시스템에서 getter 메서드가 일반적인 데이터 접근 코드와 모양이 같다는 점도 꽤나 매력스럽게 느껴진다.
