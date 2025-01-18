@@ -31,5 +31,13 @@ export declare namespace InvoiceType {
  * Statement Types
  */
 export declare namespace StatementType {
-  type StatementData = InvoiceType.Invoice & {};
+  type StatementData = {
+    customer: string;
+    performances: Array<PerformanceInfo>;
+  };
+
+  type PerformanceInfo = InvoiceType.PerformanceInfo & {
+    play: PlayType.PlayInfo;
+    amount: number;
+  };
 }
