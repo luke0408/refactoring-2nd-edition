@@ -26,3 +26,10 @@ export declare namespace InvoiceType {
 
   type Invoices = Array<Invoice>;
 }
+
+/**
+ * Statement Types
+ */
+export declare namespace StatementType {
+  type StatementData = InvoiceType.Invoice & {};
+}

@@ -968,3 +968,40 @@ function renderPlainText(invoice: InvoiceType.Invoice, plays: PlayType.Plays) {
   ): number { ... }
 }
 ```
+
+다음으로 두 단계 사이의 중간 데이터 구조 역할을 할 객체를 만들어 renderPlainText()에 인수로 전달한다.
+
+해당 객체는 고객 데이터와 공연 정보를 가짐으로 renderPlainText()에서 필요 없어질 invoice 인수는 제거한다.
+
+> statement()
+
+```ts
+export function statement (
+  invoice: InvoiceType.Invoice, 
+  plays: PlayType.Plays
+): string {
+  const statementData: StatementType.StatementData = {
+    customer: invoice.customer,
+    performances: invoice.performances
+  };
+
+  return renderPlainText(statementData, plays);
+};
+```
+
+> readerPlainText()
+
+```ts
+function renderPlainText(data: StatementType.StatementData, plays: PlayType.Plays) {
+  let result: string = `청구 내역 (고객명: ${data.customer})\n`;
+
+  for (let perf of data.performances) {
+    result += ` ${playFor(perf).name}: ${usd(amountFor(perf))} (${perf.audience}석)\n`;
+  }
+
+  result += `총액: ${usd(totalAmount())}\n`;
+  result += `적립 포인트: ${totalVolumeCredits()}점\n`;
+
+  return result;
+}
+```

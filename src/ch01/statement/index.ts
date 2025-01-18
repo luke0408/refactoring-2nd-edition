@@ -1,4 +1,4 @@
-import { InvoiceType, PlayType } from '../types';
+import { InvoiceType, PlayType, StatementType } from '../types';
 
 /**
  * 연극에 대한 청구 내역과 총액, 적립 포인트를 반환한다.
@@ -11,20 +11,25 @@ export function statement (
   invoice: InvoiceType.Invoice, 
   plays: PlayType.Plays
 ): string {
-  return renderPlainText(invoice, plays);
+  const statementData: StatementType.StatementData = {
+    customer: invoice.customer,
+    performances: invoice.performances
+  };
+
+  return renderPlainText(statementData, plays);
 };
 
 /**
  * 청구 내역을 출력한다.
  * 
- * @param invoice 
+ * @param data 
  * @param plays 
  * @returns 
  */
-function renderPlainText(invoice: InvoiceType.Invoice, plays: PlayType.Plays) {
-  let result: string = `청구 내역 (고객명: ${invoice.customer})\n`;
+function renderPlainText(data: StatementType.StatementData, plays: PlayType.Plays) {
+  let result: string = `청구 내역 (고객명: ${data.customer})\n`;
 
-  for (let perf of invoice.performances) {
+  for (let perf of data.performances) {
     result += ` ${playFor(perf).name}: ${usd(amountFor(perf))} (${perf.audience}석)\n`;
   }
 
@@ -40,7 +45,7 @@ function renderPlainText(invoice: InvoiceType.Invoice, plays: PlayType.Plays) {
    */
   function totalAmount() {
     let result: number = 0;
-    for (let perf of invoice.performances) {
+    for (let perf of data.performances) {
       result += amountFor(perf);
     }
     return result;
@@ -53,7 +58,7 @@ function renderPlainText(invoice: InvoiceType.Invoice, plays: PlayType.Plays) {
    */
   function totalVolumeCredits() {
     let result: number = 0;
-    for (let perf of invoice.performances) {
+    for (let perf of data.performances) {
       result += volumeCreditsFor(perf);
     }
     return result;
