@@ -34,10 +34,13 @@ export declare namespace StatementType {
   type StatementData = {
     customer: string;
     performances: Array<PerformanceInfo>;
+    totalAmount: number;
+    totalVolumeCredits: number;
   };
 
   type PerformanceInfo = InvoiceType.PerformanceInfo & {
     play: PlayType.PlayInfo;
     amount: number;
+    volumeCredits: number;
   };
 }

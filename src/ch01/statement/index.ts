@@ -11,6 +11,8 @@ export function statement(invoice: InvoiceType.Invoice, plays: PlayType.Plays): 
   const statementData: StatementType.StatementData = {} as StatementType.StatementData;
   statementData.customer = invoice.customer;
   statementData.performances = invoice.performances.map(enrichPerformance);
+  statementData.totalAmount = totalAmount(statementData);
+  statementData.totalVolumeCredits = totalVolumeCredits(statementData);
 
   return renderPlainText(statementData, plays);
 
@@ -24,6 +26,8 @@ export function statement(invoice: InvoiceType.Invoice, plays: PlayType.Plays): 
     const result = Object.assign({}, performance) as StatementType.PerformanceInfo;
     result.play = playFor(result);
     result.amount = amountFor(result);
+    result.volumeCredits = volumeCreditsFor(result);
+    
     return result;
   }
 
@@ -64,33 +68,13 @@ export function statement(invoice: InvoiceType.Invoice, plays: PlayType.Plays): 
     }
     return thisAmount;
   }
-}
-
-/**
- * 청구 내역을 출력한다.
- *
- * @param data
- * @param plays
- * @returns
- */
-function renderPlainText(data: StatementType.StatementData, plays: PlayType.Plays) {
-  let result: string = `청구 내역 (고객명: ${data.customer})\n`;
-
-  for (let perf of data.performances) {
-    result += ` ${perf.play.name}: ${usd(perf.amount)} (${perf.audience}석)\n`;
-  }
-
-  result += `총액: ${usd(totalAmount())}\n`;
-  result += `적립 포인트: ${totalVolumeCredits()}점\n`;
-
-  return result;
 
   /**
    * totalAmount를 구한다.
    *
    * @returns
    */
-  function totalAmount() {
+  function totalAmount(data: StatementType.StatementData) {
     let result: number = 0;
     for (let perf of data.performances) {
       result += perf.amount;
@@ -103,26 +87,12 @@ function renderPlainText(data: StatementType.StatementData, plays: PlayType.Play
    *
    * @returns
    */
-  function totalVolumeCredits() {
+  function totalVolumeCredits(data: StatementType.StatementData) {
     let result: number = 0;
     for (let perf of data.performances) {
       result += volumeCreditsFor(perf);
     }
     return result;
-  }
-
-  /**
-   * USD 화패 단위에 맞게 값을 수정한다.
-   *
-   * @param number
-   * @returns
-   */
-  function usd(number: number): string {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-    }).format(number / 100);
   }
 
   /**
@@ -140,5 +110,39 @@ function renderPlainText(data: StatementType.StatementData, plays: PlayType.Play
     }
 
     return volumeCredits;
+  }
+}
+
+/**
+ * 청구 내역을 출력한다.
+ *
+ * @param data
+ * @param plays
+ * @returns
+ */
+function renderPlainText(data: StatementType.StatementData, plays: PlayType.Plays) {
+  let result: string = `청구 내역 (고객명: ${data.customer})\n`;
+
+  for (let perf of data.performances) {
+    result += ` ${perf.play.name}: ${usd(perf.amount)} (${perf.audience}석)\n`;
+  }
+
+  result += `총액: ${usd(data.totalAmount)}\n`;
+  result += `적립 포인트: ${data.totalVolumeCredits}점\n`;
+
+  return result;
+
+  /**
+   * USD 화패 단위에 맞게 값을 수정한다.
+   *
+   * @param number
+   * @returns
+   */
+  function usd(number: number): string {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    }).format(number / 100);
   }
 }
