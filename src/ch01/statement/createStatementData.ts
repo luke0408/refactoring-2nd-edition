@@ -22,7 +22,7 @@ export function createStatementData(invoice: InvoiceType.Invoice, plays: PlayTyp
    * @returns
    */
   function enrichPerformance(performance: InvoiceType.PerformanceInfo): StatementType.PerformanceInfo {
-    const calculator = new PerformanceCalculator(performance, playFor(performance));
+    const calculator = createPerformanceCalculator(performance, playFor(performance));
     const result = Object.assign({}, performance) as StatementType.PerformanceInfo;
     result.play = calculator.play;
     result.amount = calculator.amount;
@@ -73,35 +73,48 @@ class PerformanceCalculator {
   play: PlayType.PlayInfo;
 
   public get amount(): number {
-    let result: number = 0;
-    switch (this.play.type) {
-      case 'tragedy':
-        result = 40000;
-        if (this.performance.audience > 30) {
-          result += 1000 * (this.performance.audience - 30);
-        }
-        break;
-      case 'comedy':
-        result = 30000;
-        if (this.performance.audience > 20) {
-          result += 10000 + 500 * (this.performance.audience - 20);
-        }
-        result += 300 * this.performance.audience;
-        break;
-      default:
-        throw new Error(`알 수 없는 장르: ${this.play.type}`);
+    throw new Error('서브 클래스에서 처리하도록 설계 되었습니다.');
+  }
+
+  public get volumeCredits(): number {
+    return Math.max(this.performance.audience - 30, 0);
+  }
+}
+
+function createPerformanceCalculator(performance: InvoiceType.PerformanceInfo, play: PlayType.PlayInfo) {
+  switch (play.type) {
+    case 'tragedy':
+      return new TragedyCalculator(performance, play);
+    case 'comedy':
+      return new ComedyCalculator(performance, play);
+    default:
+      throw new Error(`알 수 없는 장르: ${play.type}`);
+  }
+}
+
+class TragedyCalculator extends PerformanceCalculator {
+  public get amount(): number {
+    let result = 40000;
+    if (this.performance.audience > 30) {
+      result += 1000 * (this.performance.audience - 30);
     }
+
+    return result;
+  }
+}
+
+class ComedyCalculator extends PerformanceCalculator {
+  public get amount(): number {
+    let result = 30000;
+    if (this.performance.audience > 20) {
+      result += 10000 + 500 * (this.performance.audience - 20);
+    }
+    result += 300 * this.performance.audience;
+
     return result;
   }
 
   public get volumeCredits(): number {
-    let volumeCredits = 0;
-    volumeCredits += Math.max(this.performance.audience - 30, 0);
-
-    if ('comedy' === this.play.type) {
-      volumeCredits += Math.floor(this.performance.audience / 5);
-    }
-
-    return volumeCredits;
+    return super.volumeCredits + Math.floor(this.performance.audience / 5);
   }
 }
