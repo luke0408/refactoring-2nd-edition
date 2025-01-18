@@ -8,13 +8,57 @@ import { InvoiceType, PlayType, StatementType } from '../types';
  * @returns
  */
 export function statement(invoice: InvoiceType.Invoice, plays: PlayType.Plays): string {
+  return renderPlainText(createStatementData(invoice, plays));
+}
+
+/**
+ * 청구 내역을 출력한다.
+ *
+ * @param data
+ * @param plays
+ * @returns
+ */
+function renderPlainText(data: StatementType.StatementData) {
+  let result: string = `청구 내역 (고객명: ${data.customer})\n`;
+
+  for (let perf of data.performances) {
+    result += ` ${perf.play.name}: ${usd(perf.amount)} (${perf.audience}석)\n`;
+  }
+
+  result += `총액: ${usd(data.totalAmount)}\n`;
+  result += `적립 포인트: ${data.totalVolumeCredits}점\n`;
+
+  return result;
+
+  /**
+   * USD 화패 단위에 맞게 값을 수정한다.
+   *
+   * @param number
+   * @returns
+   */
+  function usd(number: number): string {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    }).format(number / 100);
+  }
+}
+
+/**
+ * statement에 필요한 데이터를 처리한다.
+ * 
+ * @param invoice 
+ * @param plays 
+ * @returns 
+ */
+function createStatementData(invoice: InvoiceType.Invoice, plays: PlayType.Plays) {
   const statementData: StatementType.StatementData = {} as StatementType.StatementData;
   statementData.customer = invoice.customer;
   statementData.performances = invoice.performances.map(enrichPerformance);
   statementData.totalAmount = totalAmount(statementData);
   statementData.totalVolumeCredits = totalVolumeCredits(statementData);
-
-  return renderPlainText(statementData, plays);
+  return statementData;
 
   /**
    * 공연 정보를 추가한다.
@@ -104,39 +148,5 @@ export function statement(invoice: InvoiceType.Invoice, plays: PlayType.Plays): 
     }
 
     return volumeCredits;
-  }
-}
-
-/**
- * 청구 내역을 출력한다.
- *
- * @param data
- * @param plays
- * @returns
- */
-function renderPlainText(data: StatementType.StatementData, plays: PlayType.Plays) {
-  let result: string = `청구 내역 (고객명: ${data.customer})\n`;
-
-  for (let perf of data.performances) {
-    result += ` ${perf.play.name}: ${usd(perf.amount)} (${perf.audience}석)\n`;
-  }
-
-  result += `총액: ${usd(data.totalAmount)}\n`;
-  result += `적립 포인트: ${data.totalVolumeCredits}점\n`;
-
-  return result;
-
-  /**
-   * USD 화패 단위에 맞게 값을 수정한다.
-   *
-   * @param number
-   * @returns
-   */
-  function usd(number: number): string {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-    }).format(number / 100);
   }
 }
