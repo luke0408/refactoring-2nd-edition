@@ -530,3 +530,441 @@ export function statement (
   return result;
 }
 ```
+
+### format 변수 제거하기
+
+앞에서 설명했듯이 임시 변수는 나중에 문제를 일으킬 수 있다. 임시 변수는 자신이 속한 루틴에서만 의미가 있어서 루틴이 길고 복잡하다. 따라서 이번 리팩토링에서는 이런 변수를 제거하고자 한다.
+
+format은 임시 변수에 함수를 대입한 형태인데, 이를 직접 함수로 선언해 사용하는 형태로 바꾸어 보았다.
+
+> format()
+
+```ts
+function format(number: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+  }).format(number);
+}
+```
+
+> statement()
+
+```ts
+export function statement (
+  invoice: InvoiceType.Invoice, 
+  plays: PlayType.Plays
+): string {
+  let totalAmount: number = 0;
+  let volumeCredits: number = 0;
+  let result: string = `청구 내역 (고객명: ${invoice.customer})\n`;
+
+  for (let perf of invoice.performances) {
+    volumeCredits += volumeCreditsFor(perf);
+
+    // 청구 내역을 출력한다.
+    result += ` ${playFor(perf).name}: ${format(amountFor(perf) / 100)} (${perf.audience}석)\n`;
+    totalAmount += amountFor(perf);
+  }
+  
+  result += `총액: ${format(totalAmount / 100)}\n`;
+  result += `적립 포인트: ${volumeCredits}점\n`;
+  
+  return result;
+}
+```
+
+하지만 format 이라는 함수명은 화패 단위 맞추기라는 기능을 재대로 설명하지 못하는 것 같아 다음과 같이 usd 라는 이름으로 변경해주었다.
+
+또한 공통적으로 들어가는 나누기 100 로직도 함수 내부로 이동 시킴으로써 세부적인 기능을 함수 내부로 숨겼다.
+
+> usd()
+
+```ts
+function usd(number: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+  }).format(number / 100);
+}
+```
+
+> statement()
+
+```ts
+export function statement (
+  invoice: InvoiceType.Invoice, 
+  plays: PlayType.Plays
+): string {
+  let totalAmount: number = 0;
+  let volumeCredits: number = 0;
+  let result: string = `청구 내역 (고객명: ${invoice.customer})\n`;
+
+  for (let perf of invoice.performances) {
+    volumeCredits += volumeCreditsFor(perf);
+
+    // 청구 내역을 출력한다.
+    result += ` ${playFor(perf).name}: ${usd(amountFor(perf))} (${perf.audience}석)\n`;
+    totalAmount += amountFor(perf);
+  }
+  
+  result += `총액: ${usd(totalAmount)}\n`;
+  result += `적립 포인트: ${volumeCredits}점\n`;
+  
+  return result;
+}
+```
+
+### volumeCredits 변수 제거하기
+
+해당 변수는 반복문을 한 바뀌 돌 때마다 값을 누적하기 땜누에 리팩토링이 까다롭다. 때문에 먼저 반복분 쪼개기를 통해 volumeCredis 값이 누적되는 부분을 따로 빼줘야한다.
+
+> statement()
+
+```ts
+export function statement (
+  invoice: InvoiceType.Invoice, 
+  plays: PlayType.Plays
+): string {
+  let totalAmount: number = 0;
+  let volumeCredits: number = 0;
+  let result: string = `청구 내역 (고객명: ${invoice.customer})\n`;
+
+  for (let perf of invoice.performances) {
+    // 청구 내역을 출력한다.
+    result += ` ${playFor(perf).name}: ${usd(amountFor(perf))} (${perf.audience}석)\n`;
+    totalAmount += amountFor(perf);
+  }
+
+  for (let perf of invoice.performances) {
+    volumeCredits += volumeCreditsFor(perf);
+  }
+  
+  result += `총액: ${usd(totalAmount)}\n`;
+  result += `적립 포인트: ${volumeCredits}점\n`;
+  
+  return result;
+}
+```
+
+이어서 문장 슬라이스하기를 적용해서 volumeCredits 변수를 선언하는 문장을 반복문 앞으로 옮긴다.
+
+> statement()
+
+```ts
+export function statement (
+  invoice: InvoiceType.Invoice, 
+  plays: PlayType.Plays
+): string {
+  let totalAmount: number = 0;
+  let result: string = `청구 내역 (고객명: ${invoice.customer})\n`;
+
+  for (let perf of invoice.performances) {
+    // 청구 내역을 출력한다.
+    result += ` ${playFor(perf).name}: ${usd(amountFor(perf))} (${perf.audience}석)\n`;
+    totalAmount += amountFor(perf);
+  }
+
+  let volumeCredits: number = 0;
+  for (let perf of invoice.performances) {
+    volumeCredits += volumeCreditsFor(perf);
+  }
+  
+  result += `총액: ${usd(totalAmount)}\n`;
+  result += `적립 포인트: ${volumeCredits}점\n`;
+  
+  return result;
+}
+```
+
+이제 임시 변수를 질의 함수로 바꾸기가 수월해졌으니 volumeCredits 변수를 제거할 수 있다. 우선 함수를 추출 하자.
+
+> totalVolumeCredits()
+
+```ts
+function totalVolumeCredits() {
+  let volumeCredits: number = 0;
+  for (let perf of invoice.performances) {
+    volumeCredits += volumeCreditsFor(perf);
+  }
+  return volumeCredits;
+}
+```
+
+이후 volumeCredits 변수를 인라인 하면 다음과 같은 코드를 얻을 수 있다.
+
+> statement()
+
+```ts
+export function statement (
+  invoice: InvoiceType.Invoice, 
+  plays: PlayType.Plays
+): string {
+  let totalAmount: number = 0;
+  let result: string = `청구 내역 (고객명: ${invoice.customer})\n`;
+  
+  for (let perf of invoice.performances) {
+    // 청구 내역을 출력한다.
+    result += ` ${playFor(perf).name}: ${usd(amountFor(perf))} (${perf.audience}석)\n`;
+    totalAmount += amountFor(perf);
+  }
+  
+  result += `총액: ${usd(totalAmount)}\n`;
+  result += `적립 포인트: ${totalVolumeCredits();}점\n`;
+  
+  return result;
+}
+```
+
+여기서 잠시 멈추고 방금 한 일에 대해서 생각해보자. 무엇보다도 반복문을 쪼개서 성능이 느려지진 않을까 걱정할 수 있다.
+
+하지만 실제로 변경 전후의 코드를 테스트 해본 결과는 다음과 같다.
+
+```bash
+// for문 쪼개기 적용 전
+PASS  test/ch01/statement.spec.ts (5.967 s)
+ StatementTest
+   ✓ statement는 string 결과 값을 도출할 수 있다. (22 ms)
+
+// for문 쪼개기 적용 후
+PASS  test/ch01/statement.spec.ts (6.364 s)
+ StatementTest
+   ✓ statement는 string 결과 값을 도출할 수 있다. (26 ms)
+```
+
+실제 이번 리팩터링 전과 후의 실행 시간은 거의 차이가 나지 않는다. 똑똑한 컴파일러들은 최신 캐싱 기법 등으로 무장하고 있어 우리의 직관을 초월하는 결과를 보여주기 때문에, 이런 성능에 대한 우리의 예측은 자주 실패하기 마련이다.
+
+하지만 '대체로 그렇다'와 '항상 그렇다'는 엄연히 다르다. 때로는 리팩터링이 성능에 큰 영향을 주기도 한다. 그런 경우라도 마틴 파울러는 개의치 않고 우선 리팩터링을 진행한다고 한다. 이는 "잘 다듬어진 코드가 성능 개선 작업도 훨씬 수월하기 때문"이라는 그의 경험에서 나온 결과이다.
+
+만약 리팩터링 때문에 성능이 떨어진다면, 일단 무시하고 진행한 뒤 이후에 성능을 다시 개선하자.
+
+또한, volumeCredits 변수를 제거하는 과정을 아래와 같이 아주 잘게 나누웠다는 점에 집중해야한다.
+
+1. **반복문 쪼개기**로 변수 값을 누적시키는 부분을 분리한다.
+2. **문장 슬라이드 하기**로 변수 초기화 문장을 변수 값 누적 코드 바로 앞으로 옮긴다.
+3. **함수 추출하기**로 적립 포인트 계산 부분을 별도 함수로 추출한다.
+4. **변수 인라인하기**로 volumeCredits 변수를 제거한다.
+
+모든 순간 위 처럼 잘게 단계를 나누어 진행할 수 있는 건 아니겠지만, 그래도 상황이 복잡해지면 단계를 더 잘게 나누는 것을 추천한다. 특히, 리팩터링 중간에 테스트가 실패하고 원인을 바로 찾지 못한다면 이전 커밋으로 돌아가 단계를 나누어 진행하면 문제를 해결할 가능성이 높다.
+
+자 이제 마지막으로 totalAmount도 앞에서 진행한 것과 같은 절차로 제거하겠다. 이땐 중간 과정은 생략하고 결과 코드만 보여주도록 하겠다.
+
+> totalAmount()
+
+```ts
+function totalAmount() {
+  let result: number = 0;
+  for (let perf of invoice.performances) {
+    result += amountFor(perf);
+  }
+  return result;
+}
+```
+
+> statement()
+
+```ts
+export function statement (
+  invoice: InvoiceType.Invoice, 
+  plays: PlayType.Plays
+): string {
+  let result: string = `청구 내역 (고객명: ${invoice.customer})\n`;
+  
+  for (let perf of invoice.performances) {
+    result += ` ${playFor(perf).name}: ${usd(amountFor(perf))} (${perf.audience}석)\n`;
+  }
+    
+  result += `총액: ${usd(totalAmount())}\n`;
+  result += `적립 포인트: ${totalVolumeCredits()}점\n`;
+  
+  return result;
+}
+```
+
+## 1.5 중간 점검: 난무하는 중첩 함수
+
+지금까지의 코드를 한번 전체적으로 봐보자.
+
+> statement()
+
+```ts
+import { InvoiceType, PlayType } from '../types';
+
+/**
+ * 연극에 대한 청구 내역과 총액, 적립 포인트를 반환한다.
+ * 
+ * @param invoice 
+ * @param plays 
+ * @returns 
+ */
+export function statement (
+  invoice: InvoiceType.Invoice, 
+  plays: PlayType.Plays
+): string {
+  let result: string = `청구 내역 (고객명: ${invoice.customer})\n`;
+  
+  for (let perf of invoice.performances) {
+    result += ` ${playFor(perf).name}: ${usd(amountFor(perf))} (${perf.audience}석)\n`;
+  }
+    
+  result += `총액: ${usd(totalAmount())}\n`;
+  result += `적립 포인트: ${totalVolumeCredits()}점\n`;
+  
+  return result;
+  
+  /**
+   * totalAmount를 구한다.
+   * 
+   * @returns 
+   */
+  function totalAmount() {
+    let result: number = 0;
+    for (let perf of invoice.performances) {
+      result += amountFor(perf);
+    }
+    return result;
+  }
+
+  /**
+   * volumeCredites를 구한다.
+   * 
+   * @returns 
+   */
+  function totalVolumeCredits() {
+    let result: number = 0;
+    for (let perf of invoice.performances) {
+      result += volumeCreditsFor(perf);
+    }
+    return result;
+  }
+
+  /**
+   * USD 화패 단위에 맞게 값을 수정한다.
+   * 
+   * @param number 
+   * @returns 
+   */
+  function usd(number: number): string {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    }).format(number / 100);
+  }
+
+  /**
+   * performance를 통해 play 값을 구한다.
+   * 
+   * @param performance 
+   * @returns 
+   */
+  function playFor(
+    performance: InvoiceType.PerformanceInfo
+  ): PlayType.PlayInfo {
+    return plays[performance.playID];
+  };
+
+  /**
+   * 청구 내역에 대한 금액을 구한다.
+   * 
+   * @param performance 
+   * @returns 
+   */
+  function amountFor (
+    performance: InvoiceType.PerformanceInfo
+  ): number {
+    let thisAmount: number = 0;
+    switch (playFor(performance).type) {
+      case 'tragedy':
+        thisAmount = 40000;
+        if (performance.audience > 30) {
+          thisAmount += 1000 * (performance.audience - 30);
+        }
+        break;
+      case 'comedy':
+        thisAmount = 30000;
+        if (performance.audience > 20) {
+          thisAmount += 10000 + 500 * (performance.audience - 20);
+        }
+        thisAmount += 300 * performance.audience;
+        break;
+      default:
+        throw new Error(`알 수 없는 장르: ${playFor(performance).type}`);
+    }
+    return thisAmount;
+  };
+
+  /**
+   * 적립 포인트를 계산한다.
+   * 
+   * @param performance 
+   * @returns 
+   */
+  function volumeCreditsFor(
+    performance: InvoiceType.PerformanceInfo
+  ): number {
+    let volumeCredits = 0;
+    volumeCredits += Math.max(performance.audience - 30, 0);
+    
+    if ('comedy' === playFor(performance).type) {
+      volumeCredits += Math.floor(performance.audience / 5);
+    }
+
+    return volumeCredits;
+  }
+};
+```
+
+최상위 statement() 함수는 단 7줄이며, 출력할 문장만 생상하는 일만 한다. 계산 함수 또한 모두 여러개의 보조 함수로 빼내어 결과적으로 각 계산 과정은 물론 전체 흐름 또한 이해하기 쉬워졌다.
+
+## 1.6 계산 단계와 포맷팅 단계 분리하기
+
+이제 골격은 충분히 계선 되었으니 statement()의 HTML 버전을 만드는 작업을 살펴보자. 계산 코드가 모두 분리되었기 때문에 일곱 줄짜리 최상단 코드에 대응하는 HTML 버전만 작성하면 된다.
+
+하지만, 분리된 계산 함수들이 모두 statement() 안에 중첩 함수로 존재하고 있다는 문제가 있다. 먼저 이를 **단계 쪼개기**를 통해 해결해보자.
+
+이번 **단계 쪼개기**의 목표는 statemnet()의 로직을 두 단계로 나누는 것이다. 첫 단계에서는 satement()에 필요한 데이터를 처리하고, 다음 단계에서는 앞서 처리한 결과를 HTML로 표현하도록 하자.
+
+이를 하기 위해 먼저 statement()를 분리해보자.
+
+```ts
+export function statement (
+  invoice: InvoiceType.Invoice, 
+  plays: PlayType.Plays
+): string {
+  return renderPlainText(invoice, plays);
+};
+
+function renderPlainText(invoice: InvoiceType.Invoice, plays: PlayType.Plays) {
+  let result: string = `청구 내역 (고객명: ${invoice.customer})\n`;
+
+  for (let perf of invoice.performances) {
+    result += ` ${playFor(perf).name}: ${usd(amountFor(perf))} (${perf.audience}석)\n`;
+  }
+
+  result += `총액: ${usd(totalAmount())}\n`;
+  result += `적립 포인트: ${totalVolumeCredits()}점\n`;
+
+  return result;
+
+  function totalAmount() { ... }
+
+  function totalVolumeCredits() { ... }
+
+  function usd(number: number): string { ... }
+
+  function playFor(
+    performance: InvoiceType.PerformanceInfo
+  ): PlayType.PlayInfo { ... };
+
+  function amountFor(
+    performance: InvoiceType.PerformanceInfo
+  ): number { ... };
+
+  function volumeCreditsFor(
+    performance: InvoiceType.PerformanceInfo
+  ): number { ... }
+}
+```

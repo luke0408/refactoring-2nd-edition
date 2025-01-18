@@ -11,34 +11,73 @@ export function statement (
   invoice: InvoiceType.Invoice, 
   plays: PlayType.Plays
 ): string {
-  let totalAmount: number = 0;
-  let volumeCredits: number = 0;
+  return renderPlainText(invoice, plays);
+};
+
+/**
+ * 청구 내역을 출력한다.
+ * 
+ * @param invoice 
+ * @param plays 
+ * @returns 
+ */
+function renderPlainText(invoice: InvoiceType.Invoice, plays: PlayType.Plays) {
   let result: string = `청구 내역 (고객명: ${invoice.customer})\n`;
 
-  const format = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-  }).format;
-
   for (let perf of invoice.performances) {
-    volumeCredits += volumeCreditsFor(perf);
-
-    // 청구 내역을 출력한다.
-    result += ` ${playFor(perf).name}: ${format(amountFor(perf) / 100)} (${perf.audience}석)\n`;
-    totalAmount += amountFor(perf);
+    result += ` ${playFor(perf).name}: ${usd(amountFor(perf))} (${perf.audience}석)\n`;
   }
-  
-  result += `총액: ${format(totalAmount / 100)}\n`;
-  result += `적립 포인트: ${volumeCredits}점\n`;
-  
+
+  result += `총액: ${usd(totalAmount())}\n`;
+  result += `적립 포인트: ${totalVolumeCredits()}점\n`;
+
   return result;
-  
+
+  /**
+   * totalAmount를 구한다.
+   *
+   * @returns
+   */
+  function totalAmount() {
+    let result: number = 0;
+    for (let perf of invoice.performances) {
+      result += amountFor(perf);
+    }
+    return result;
+  }
+
+  /**
+   * volumeCredites를 구한다.
+   *
+   * @returns
+   */
+  function totalVolumeCredits() {
+    let result: number = 0;
+    for (let perf of invoice.performances) {
+      result += volumeCreditsFor(perf);
+    }
+    return result;
+  }
+
+  /**
+   * USD 화패 단위에 맞게 값을 수정한다.
+   *
+   * @param number
+   * @returns
+   */
+  function usd(number: number): string {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    }).format(number / 100);
+  }
+
   /**
    * performance를 통해 play 값을 구한다.
-   * 
-   * @param performance 
-   * @returns 
+   *
+   * @param performance
+   * @returns
    */
   function playFor(
     performance: InvoiceType.PerformanceInfo
@@ -48,11 +87,11 @@ export function statement (
 
   /**
    * 청구 내역에 대한 금액을 구한다.
-   * 
-   * @param performance 
-   * @returns 
+   *
+   * @param performance
+   * @returns
    */
-  function amountFor (
+  function amountFor(
     performance: InvoiceType.PerformanceInfo
   ): number {
     let thisAmount: number = 0;
@@ -78,20 +117,21 @@ export function statement (
 
   /**
    * 적립 포인트를 계산한다.
-   * 
-   * @param performance 
-   * @returns 
+   *
+   * @param performance
+   * @returns
    */
   function volumeCreditsFor(
     performance: InvoiceType.PerformanceInfo
   ): number {
     let volumeCredits = 0;
     volumeCredits += Math.max(performance.audience - 30, 0);
-    
+
     if ('comedy' === playFor(performance).type) {
       volumeCredits += Math.floor(performance.audience / 5);
     }
 
     return volumeCredits;
   }
-};
+}
+
