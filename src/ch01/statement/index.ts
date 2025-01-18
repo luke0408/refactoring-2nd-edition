@@ -22,11 +22,7 @@ export function statement (
   }).format;
 
   for (let perf of invoice.performances) {
-    // 포인트를 제공한다.
-    volumeCredits += Math.max(perf.audience - 30, 0);
-
-    // 희극 관객 5명마다 추가 포인트를 제공한다.
-    if ('comedy' === playFor(perf).type) volumeCredits += Math.floor(perf.audience / 5);
+    volumeCredits += volumeCreditsFor(perf);
 
     // 청구 내역을 출력한다.
     result += ` ${playFor(perf).name}: ${format(amountFor(perf) / 100)} (${perf.audience}석)\n`;
@@ -79,4 +75,23 @@ export function statement (
     }
     return thisAmount;
   };
+
+  /**
+   * 적립 포인트를 계산한다.
+   * 
+   * @param performance 
+   * @returns 
+   */
+  function volumeCreditsFor(
+    performance: InvoiceType.PerformanceInfo
+  ): number {
+    let volumeCredits = 0;
+    volumeCredits += Math.max(performance.audience - 30, 0);
+    
+    if ('comedy' === playFor(performance).type) {
+      volumeCredits += Math.floor(performance.audience / 5);
+    }
+
+    return volumeCredits;
+  }
 };

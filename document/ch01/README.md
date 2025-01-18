@@ -63,6 +63,8 @@
 
 공연료 청구서를 출력하는 코드는 다음과 같이 `statement()` 함수로 구현된다.
 
+> statement()
+
 ```ts
 import { InvoiceType, PlayType } from '../types';
 
@@ -161,6 +163,8 @@ export function statement(
 
 statement() 함수에 대한 테스트 코드는 다음과 같이 작성했다.
 
+> statement.spec.ts
+
 ```ts
 import { statement } from '../../src/ch01/statement';
 import { InvoiceType, PlayType } from '../../src/ch01/types';
@@ -194,11 +198,13 @@ describe('StatementTest', () => {
 });
 ```
 
-위 테스트 코드는 jest 라이브러리를 사용해 작성했으며 `npm run test`를 통해 실행 가능하다.
+위 테스트 코드는 [jest](https://jestjs.io/) 라이브러리를 사용해 작성했으며 `npm run test`를 통해 실행 가능하다.
 
 ## 1.4 statement() 함수 쪼개기
 
 statement() 함수 중간에는 switch 문이 있다. 이 switch 문을 살펴보면 한 번의 공연에 대한 요금을 계산하고 있다.
+
+> statement() 함수의 switch 문
 
 ```ts
 // 문제의 스위치문 
@@ -243,6 +249,8 @@ switch (play?.type) {
 
 이렇게 리팩토링한 결과는 다음과 같다.
 
+> statement()
+
 ```ts
 export function statement(
   invoice: InvoiceType.Invoice, 
@@ -282,6 +290,8 @@ export function statement(
 };
 ```
 
+> amountFor()
+
 ```ts
 function amountFor (
   play: PlayType.PlayInfo,
@@ -311,6 +321,8 @@ function amountFor (
 
 이제 test를 돌려 잘 작동하는 것을 확인하자. <br>
 *(이후에는 test 코드가 변경되는 지점에서만 test 결과를 첨부하겠다.)*
+
+> npm run test 결과
 
 ```bash
 $ ~/refactoring-2nd-edition{master}$ npm run test
@@ -345,6 +357,8 @@ amountFor()의 매개변수를 살펴보면서 이 값들이 어디서 오는지
 
 이제 다음과 같이 변경된 코드를 볼 수 있다.
 
+> playFor()
+
 ```ts
 function playFor(
   performance: InvoiceType.PerformanceInfo
@@ -352,6 +366,8 @@ function playFor(
   return plays[performance.playID];
 };
 ```
+
+> statement()
 
 ```ts
 export function statement (
@@ -398,6 +414,8 @@ export function statement (
 
 이번에 제거하게 될 매개변수는 `play`와 `thisAmount` 이다.
 
+> amountFor()
+
 ```ts
 function amountFor (
   performance: InvoiceType.PerformanceInfo
@@ -424,6 +442,8 @@ function amountFor (
 };
 ```
 
+> statement()
+
 ```ts
 export function statement (
   invoice: InvoiceType.Invoice, 
@@ -445,6 +465,59 @@ export function statement (
 
     // 희극 관객 5명마다 추가 포인트를 제공한다.
     if ('comedy' === playFor(perf).type) volumeCredits += Math.floor(perf.audience / 5);
+
+    // 청구 내역을 출력한다.
+    result += ` ${playFor(perf).name}: ${format(amountFor(perf) / 100)} (${perf.audience}석)\n`;
+    totalAmount += amountFor(perf);
+  }
+  
+  result += `총액: ${format(totalAmount / 100)}\n`;
+  result += `적립 포인트: ${volumeCredits}점\n`;
+  
+  return result;
+}
+```
+
+### 적립 포인트 계산 코드 추출하기
+
+아직 처리해야할 변수가 두 개 더 남았다. 여기서도 perf는 값의 전달만 하면 되기 때문에 인라인으로 처리해도 된다. 하지만 volumeCredits는 반복분을 돌 때마다 값을 누적해야하기 때문에 이부분을 신경써줘야 한다.
+
+이 상황에서 최선의 방법은 추출한 함수에서 volumeCredits의 복제본을 초기화 한 뒤에 계산 결과를 반환하게 하는 것이다. 그 역할을 하는 함수에 volumeCreditsFor()이라는 이름을 붙여주었다.
+
+> volumeCreditsFor()
+
+```ts
+function volumeCreditsFor(
+  performance: InvoiceType.PerformanceInfo
+): number {
+  let volumeCredits = 0;
+  volumeCredits += Math.max(performance.audience - 30, 0);
+  
+  if ('comedy' === playFor(performance).type) {
+    volumeCredits += Math.floor(performance.audience / 5);
+  }
+  return volumeCredits;
+}
+```
+
+> statement()
+```ts
+export function statement (
+  invoice: InvoiceType.Invoice, 
+  plays: PlayType.Plays
+): string {
+  let totalAmount: number = 0;
+  let volumeCredits: number = 0;
+  let result: string = `청구 내역 (고객명: ${invoice.customer})\n`;
+
+  const format = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+  }).format;
+
+  for (let perf of invoice.performances) {
+    volumeCredits += volumeCreditsFor(perf);
 
     // 청구 내역을 출력한다.
     result += ` ${playFor(perf).name}: ${format(amountFor(perf) / 100)} (${perf.audience}석)\n`;
