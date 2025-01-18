@@ -22,8 +22,9 @@ export function createStatementData(invoice: InvoiceType.Invoice, plays: PlayTyp
    * @returns
    */
   function enrichPerformance(performance: InvoiceType.PerformanceInfo): StatementType.PerformanceInfo {
+    const calculator = new PerformanceCalculator(performance, playFor(performance));
     const result = Object.assign({}, performance) as StatementType.PerformanceInfo;
-    result.play = playFor(result);
+    result.play = calculator.play;
     result.amount = amountFor(result);
     result.volumeCredits = volumeCreditsFor(result);
 
@@ -102,4 +103,20 @@ export function createStatementData(invoice: InvoiceType.Invoice, plays: PlayTyp
 
     return volumeCredits;
   }
+}
+
+/**
+ * 공연 관련 데이터 계산 함수를 담당하는 클래스
+ */
+class PerformanceCalculator {
+  constructor(
+    performance: InvoiceType.PerformanceInfo,
+    play: PlayType.PlayInfo
+  ) {
+    this.performance = performance;
+    this.play = play;
+  }
+
+  performance: InvoiceType.PerformanceInfo;
+  play: PlayType.PlayInfo;
 }
