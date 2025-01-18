@@ -25,8 +25,8 @@ export function createStatementData(invoice: InvoiceType.Invoice, plays: PlayTyp
     const calculator = new PerformanceCalculator(performance, playFor(performance));
     const result = Object.assign({}, performance) as StatementType.PerformanceInfo;
     result.play = calculator.play;
-    result.amount = amountFor(result);
-    result.volumeCredits = volumeCreditsFor(result);
+    result.amount = calculator.amount;
+    result.volumeCredits = calculator.volumeCredits;
 
     return result;
   }
@@ -39,34 +39,6 @@ export function createStatementData(invoice: InvoiceType.Invoice, plays: PlayTyp
    */
   function playFor(performance: InvoiceType.PerformanceInfo): PlayType.PlayInfo {
     return plays[performance.playID];
-  }
-
-  /**
-   * 청구 내역에 대한 금액을 구한다.
-   *
-   * @param performance
-   * @returns
-   */
-  function amountFor(performance: StatementType.PerformanceInfo): number {
-    let thisAmount: number = 0;
-    switch (performance.play.type) {
-      case 'tragedy':
-        thisAmount = 40000;
-        if (performance.audience > 30) {
-          thisAmount += 1000 * (performance.audience - 30);
-        }
-        break;
-      case 'comedy':
-        thisAmount = 30000;
-        if (performance.audience > 20) {
-          thisAmount += 10000 + 500 * (performance.audience - 20);
-        }
-        thisAmount += 300 * performance.audience;
-        break;
-      default:
-        throw new Error(`알 수 없는 장르: ${performance.play.type}`);
-    }
-    return thisAmount;
   }
 
   /**
@@ -86,37 +58,50 @@ export function createStatementData(invoice: InvoiceType.Invoice, plays: PlayTyp
   function totalVolumeCredits(data: StatementType.StatementData) {
     return data.performances.reduce((total, p) => total + p.volumeCredits, 0);
   }
-
-  /**
-   * 적립 포인트를 계산한다.
-   *
-   * @param performance
-   * @returns
-   */
-  function volumeCreditsFor(performance: StatementType.PerformanceInfo): number {
-    let volumeCredits = 0;
-    volumeCredits += Math.max(performance.audience - 30, 0);
-
-    if ('comedy' === performance.play.type) {
-      volumeCredits += Math.floor(performance.audience / 5);
-    }
-
-    return volumeCredits;
-  }
 }
 
 /**
  * 공연 관련 데이터 계산 함수를 담당하는 클래스
  */
 class PerformanceCalculator {
-  constructor(
-    performance: InvoiceType.PerformanceInfo,
-    play: PlayType.PlayInfo
-  ) {
+  constructor(performance: InvoiceType.PerformanceInfo, play: PlayType.PlayInfo) {
     this.performance = performance;
     this.play = play;
   }
 
   performance: InvoiceType.PerformanceInfo;
   play: PlayType.PlayInfo;
+
+  public get amount(): number {
+    let result: number = 0;
+    switch (this.play.type) {
+      case 'tragedy':
+        result = 40000;
+        if (this.performance.audience > 30) {
+          result += 1000 * (this.performance.audience - 30);
+        }
+        break;
+      case 'comedy':
+        result = 30000;
+        if (this.performance.audience > 20) {
+          result += 10000 + 500 * (this.performance.audience - 20);
+        }
+        result += 300 * this.performance.audience;
+        break;
+      default:
+        throw new Error(`알 수 없는 장르: ${this.play.type}`);
+    }
+    return result;
+  }
+
+  public get volumeCredits(): number {
+    let volumeCredits = 0;
+    volumeCredits += Math.max(this.performance.audience - 30, 0);
+
+    if ('comedy' === this.play.type) {
+      volumeCredits += Math.floor(this.performance.audience / 5);
+    }
+
+    return volumeCredits;
+  }
 }
