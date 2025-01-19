@@ -1,4 +1,4 @@
-import { InvoiceType, PlayType, StatementType } from '../types';
+import { Invoice, Plays, Statement } from '../types';
 import { createStatementData } from './createStatementData';
 
 /**
@@ -8,7 +8,7 @@ import { createStatementData } from './createStatementData';
  * @param plays
  * @returns
  */
-export function statement(invoice: InvoiceType.Invoice, plays: PlayType.Plays): string {
+export function statement(invoice: Invoice, plays: Plays): string {
   return renderPlainText(createStatementData(invoice, plays));
 }
 
@@ -19,7 +19,7 @@ export function statement(invoice: InvoiceType.Invoice, plays: PlayType.Plays): 
  * @param plays
  * @returns
  */
-export function htmlStatement(invoice: InvoiceType.Invoice, plays: PlayType.Plays): string {
+export function htmlStatement(invoice: Invoice, plays: Plays): string {
   return renderHtml(createStatementData(invoice, plays));
 }
 
@@ -29,7 +29,7 @@ export function htmlStatement(invoice: InvoiceType.Invoice, plays: PlayType.Play
  * @param data
  * @returns
  */
-function renderHtml(data: StatementType.StatementData) {
+function renderHtml(data: Statement) {
   let result = `<h1>청구 내역 (고객명: ${data.customer})</h1>\n`;
   result += '<table>\n';
   result += '<tr><th>연극</th><th>좌석 수</th><th>금액</th></tr>';
@@ -51,7 +51,7 @@ function renderHtml(data: StatementType.StatementData) {
  * @param plays
  * @returns
  */
-function renderPlainText(data: StatementType.StatementData) {
+function renderPlainText(data: Statement) {
   let result: string = `청구 내역 (고객명: ${data.customer})\n`;
 
   for (let perf of data.performances) {

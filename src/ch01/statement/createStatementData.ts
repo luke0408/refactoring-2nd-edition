@@ -1,4 +1,4 @@
-import { InvoiceType, PlayType, StatementType } from '../types';
+import { Invoice, Play, Plays, Performance, EnrichPerformance, Statement } from '../types';
 
 /**
  * statement에 필요한 데이터를 처리한다.
@@ -7,8 +7,8 @@ import { InvoiceType, PlayType, StatementType } from '../types';
  * @param plays
  * @returns
  */
-export function createStatementData(invoice: InvoiceType.Invoice, plays: PlayType.Plays) {
-  const result: StatementType.StatementData = {} as StatementType.StatementData;
+export function createStatementData(invoice: Invoice, plays: Plays) {
+  const result: Statement = {} as Statement;
   result.customer = invoice.customer;
   result.performances = invoice.performances.map(enrichPerformance);
   result.totalAmount = totalAmount(result);
@@ -21,9 +21,9 @@ export function createStatementData(invoice: InvoiceType.Invoice, plays: PlayTyp
    * @param performance
    * @returns
    */
-  function enrichPerformance(performance: InvoiceType.PerformanceInfo): StatementType.PerformanceInfo {
+  function enrichPerformance(performance: Performance): EnrichPerformance {
     const calculator = createPerformanceCalculator(performance, playFor(performance));
-    const result = Object.assign({}, performance) as StatementType.PerformanceInfo;
+    const result = Object.assign({}, performance) as EnrichPerformance;
     result.play = calculator.play;
     result.amount = calculator.amount;
     result.volumeCredits = calculator.volumeCredits;
@@ -37,7 +37,7 @@ export function createStatementData(invoice: InvoiceType.Invoice, plays: PlayTyp
    * @param performance
    * @returns
    */
-  function playFor(performance: InvoiceType.PerformanceInfo): PlayType.PlayInfo {
+  function playFor(performance: Performance): Play {
     return plays[performance.playID];
   }
 
@@ -46,7 +46,7 @@ export function createStatementData(invoice: InvoiceType.Invoice, plays: PlayTyp
    *
    * @returns
    */
-  function totalAmount(data: StatementType.StatementData) {
+  function totalAmount(data: Statement) {
     return data.performances.reduce((total, p) => total + p.amount, 0);
   }
 
@@ -55,7 +55,7 @@ export function createStatementData(invoice: InvoiceType.Invoice, plays: PlayTyp
    *
    * @returns
    */
-  function totalVolumeCredits(data: StatementType.StatementData) {
+  function totalVolumeCredits(data: Statement) {
     return data.performances.reduce((total, p) => total + p.volumeCredits, 0);
   }
 }
@@ -64,13 +64,13 @@ export function createStatementData(invoice: InvoiceType.Invoice, plays: PlayTyp
  * 공연 관련 데이터 계산 함수를 담당하는 클래스
  */
 class PerformanceCalculator {
-  constructor(performance: InvoiceType.PerformanceInfo, play: PlayType.PlayInfo) {
+  constructor(performance: Performance, play: Play) {
     this.performance = performance;
     this.play = play;
   }
 
-  performance: InvoiceType.PerformanceInfo;
-  play: PlayType.PlayInfo;
+  performance: Performance;
+  play: Play;
 
   public get amount(): number {
     throw new Error('서브 클래스에서 처리하도록 설계 되었습니다.');
@@ -83,12 +83,12 @@ class PerformanceCalculator {
 
 /**
  * PerformanceCalculator에 대한 팩터리 함수
- * 
- * @param performance 
- * @param play 
- * @returns 
+ *
+ * @param performance
+ * @param play
+ * @returns
  */
-function createPerformanceCalculator(performance: InvoiceType.PerformanceInfo, play: PlayType.PlayInfo) {
+function createPerformanceCalculator(performance: Performance, play: Play) {
   switch (play.type) {
     case 'tragedy':
       return new TragedyCalculator(performance, play);

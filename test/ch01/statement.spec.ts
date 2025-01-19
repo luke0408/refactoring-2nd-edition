@@ -1,9 +1,9 @@
 import { htmlStatement, statement } from '../../src/ch01/statement';
-import { InvoiceType, PlayType } from '../../src/ch01/types';
+import { Invoices, Plays } from '../../src/ch01/types';
 
 describe('StatementTest', () => {
-  let invoiceData: InvoiceType.Invoices;
-  let playsData: PlayType.Plays;
+  let invoiceData: Invoices;
+  let playsData: Plays;
 
   beforeAll(async () => {
     invoiceData = JSON.parse(require('fs').readFileSync('src/ch01/data/invoice.json', 'utf-8'));

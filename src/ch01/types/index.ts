@@ -1,46 +1,48 @@
-/**
- * Play Types
- */
-export declare namespace PlayType {
-  type PlayInfo = {
-    name: string;
-    type: string;
-  };
-
-  type Plays = Record<string, PlayInfo>;
+interface Customer {
+  id: string;
+  name: string;
 }
 
 /**
- * Invoice Types
+ * Play Type
  */
-export declare namespace InvoiceType {
-  type PerformanceInfo = {
-    playID: string;
-    audience: number;
-  };
+export type Play = {
+  name: string;
+  type: string;
+};
 
-  type Invoice = {
-    customer: string;
-    performances: Array<PerformanceInfo>;
-  };
+export type Plays = Record<string, Play>;
 
-  type Invoices = Array<Invoice>;
+/**
+ * Performance Type
+ */
+export interface Performance {
+  playID: string;
+  audience: number;
+}
+
+export interface EnrichPerformance extends Performance {
+  play: Play;
+  amount: number;
+  volumeCredits: number;
 }
 
 /**
- * Statement Types
+ * Invoice Type
  */
-export declare namespace StatementType {
-  type StatementData = {
-    customer: string;
-    performances: Array<PerformanceInfo>;
-    totalAmount: number;
-    totalVolumeCredits: number;
-  };
+export type Invoice = {
+  customer: Customer['name'];
+  performances: Array<Performance>;
+};
 
-  type PerformanceInfo = InvoiceType.PerformanceInfo & {
-    play: PlayType.PlayInfo;
-    amount: number;
-    volumeCredits: number;
-  };
-}
+export type Invoices = Array<Invoice>;
+
+/**
+ * Statement Type
+ */
+export type Statement = {
+  customer: Customer['name'];
+  performances: Array<EnrichPerformance>;
+  totalAmount: number;
+  totalVolumeCredits: number;
+};
