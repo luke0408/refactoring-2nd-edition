@@ -27,7 +27,7 @@
 
 - [Chapter 01. 리펙터링: 첫번째 예시](./document/ch01/README.md)
 - [Chapter 02. 리팩터링 원칙](./document/ch02/README.md)
-- Chapter 03. 코드에서 나는 악취
+- [Chapter 03. 코드에서 나는 악취](./document/ch03/README.md)
 - Chapter 04. 테스트 구축하기
 - Chapter 05. 리팩터링 카탈로그 보는 법
 - Chapter 06. 기본적인 리팩터링
