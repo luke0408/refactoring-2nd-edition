@@ -9,7 +9,7 @@ describe('Shopping', () => {
   });
 
   describe('Product', () => {
-    describe('생성 시 상품의 정보는 올바르게 설정되어야 한다.', () => {
+    it('생성 시 상품의 정보는 올바르게 설정되어야 한다.', () => {
       // given
       const name = '노트북';
       const price = 1000000;

@@ -175,7 +175,7 @@ class Product {
 
 ```typescript
 describe('Buyer', () => {
-  describe('생성 시 구매자의 정보는 올바르게 설정되어야 한다.', () => {
+  it('생성 시 구매자의 정보는 올바르게 설정되어야 한다.', () => {
     //given
     const nickname = 'buyer123';
     const balance = 2000000;
@@ -200,7 +200,7 @@ describe('Buyer', () => {
 
 ```typescript
 describe('Seller', () => {
-  describe('생성 시 판매자의 정보는 올바르게 설정되어야 한다.', () => {
+  it('생성 시 판매자의 정보는 올바르게 설정되어야 한다.', () => {
     // given
     const nickname = 'seller123';
     const balance = 0;
@@ -229,7 +229,7 @@ describe('Shopping', () => {
   });
 
   describe('Product', () => {
-    describe('생성 시 상품의 정보는 올바르게 설정되어야 한다.', () => {
+    it('생성 시 상품의 정보는 올바르게 설정되어야 한다.', () => {
       // given
       const name = '노트북';
       const price = 1000000;
