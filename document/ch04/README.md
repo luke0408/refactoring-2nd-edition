@@ -154,13 +154,105 @@ class Product {
 
 ## 4.3 첫 번째 테스트
 
+이제 우리의 온라인 쇼핑몰 시스템에 대한 첫 테스트를 작성해보겠습니다. 가장 기본적인 시나리오부터 시작하는 것이 좋습니다.
+
 > [!TIP]
-> 효과적인 테스트 코드는 given-when-then 구조를 따르는 것이 좋습니다:
+> 개인적으로 given-when-then 구조로 테스트를 작성하는 걸 좋아합니다:
 > - given: 테스트에 필요한 객체와 데이터 설정
 > - when: 실제 코드 수행
 > - then: 결과 검증
 
-[테스트 코드 예시...]
+## 4.3 첫 번째 테스트
+
+이제 우리의 온라인 쇼핑몰 시스템에 대한 첫 테스트를 작성해보겠습니다. 가장 기본적인 시나리오부터 시작하는 것이 좋습니다.
+
+> [!TIP]
+> 테스트를 시작할 때는 가장 단순하면서도 핵심적인 기능부터 시작하세요. 복잡한 시나리오는 기본 기능이 잘 동작하는 것을 확인한 후에 추가하면 됩니다.
+
+먼저 구매자와 판매자 생성을 테스트해보겠습니다:
+
+> [buyer.spec.ts](../../test/ch04/buyer.spec.ts)
+
+```typescript
+describe('Buyer', () => {
+  describe('생성 시 구매자의 정보는 올바르게 설정되어야 한다.', () => {
+    //given
+    const nickname = 'buyer123';
+    const balance = 2000000;
+
+    // when
+    const buyer = new Buyer(nickname, balance);
+
+    // then
+    expect(buyer.nickname).toBe(nickname);
+    expect(buyer.balance).toBe(balance);
+    expect(buyer.products).toHaveLength(0);
+  });
+});
+```
+
+> [!IMPORTANT]
+> 각 테스트는 한 가지 동작만을 검증하도록 작성하는 것이 좋습니다. 이는 테스트가 실패했을 때 문제를 더 쉽게 파악할 수 있게 해줍니다.
+
+판매자에 대한 테스트:
+
+> [seller.spec.ts](../../test/ch04/seller.spec.ts)
+
+```typescript
+describe('Seller', () => {
+  describe('생성 시 판매자의 정보는 올바르게 설정되어야 한다.', () => {
+    // given
+    const nickname = 'seller123';
+    const balance = 0;
+
+    // when
+    const seller = new Seller('seller123', 0);
+
+    // then
+    expect(seller.nickname).toBe(nickname);
+    expect(seller.balance).toBe(balance);
+    expect(seller.products).toHaveLength(0);
+  });
+});
+```
+
+이번엔 상품 생성이 제대로 이루어지는지 테스트해보겠습니다:
+
+> [shopping.spec.ts](../../test/ch04/shopping.spec.ts)
+
+```typescript
+describe('Shopping', () => {
+  let seller: Seller;
+
+  beforeEach(() => {
+    seller = new Seller('seller123', 500000);
+  });
+
+  describe('Product', () => {
+    describe('생성 시 상품의 정보는 올바르게 설정되어야 한다.', () => {
+      // given
+      const name = '노트북';
+      const price = 1000000;
+      const quantity = 5;
+      const sellerNickname = seller.nickname;
+
+      // when
+      const product = new Product(name, price, quantity, sellerNickname);
+
+      // then
+      expect(product.name).toBe(name);
+      expect(product.price).toBe(price);
+      expect(product.quantity).toBe(quantity);
+      expect(product.sellerNickname).toBe(seller.nickname);
+    });
+  });
+});
+```
+
+> [!NOTE]
+> `beforeEach`를 사용하여 각 테스트 케이스마다 새로운 상품 객체를 생성합니다. 이렇게 하면 테스트 간의 독립성을 보장할 수 있습니다.
+
+이러한 기본적인 테스트들이 준비되었다면, 이제 더 복잡한 상호작용을 테스트할 준비가 되었습니다. 다음 섹션에서는 구매와 판매 프로세스에 대한 더 자세한 테스트를 작성해보겠습니다.
 
 ## 4.4 테스트 추가하기
 
