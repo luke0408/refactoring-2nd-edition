@@ -94,9 +94,5 @@ export class Seller {
 
     product.decreaseQuantity(quantity);
     this.increaseBalance(totalPrice);
-
-    if (product.quantity === 0) {
-      this._soldProducts = this._soldProducts.filter((p) => p.name !== product.name);
-    }
   }
 }
