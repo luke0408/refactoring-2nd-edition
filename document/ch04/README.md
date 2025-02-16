@@ -213,18 +213,18 @@ describe('Seller', () => {
 
 이번엔 상품 생성이 제대로 이루어지는지 테스트해보겠습니다:
 
-> [shopping.spec.ts](../../test/ch04/shopping.spec.ts)
+> [product.spec.ts](../../test/ch04/product.spec.ts)
 
 ```typescript
-describe('Shopping', () => {
+describe('Product', () => {
   let seller: Seller;
 
   beforeEach(() => {
     seller = new Seller('seller123', 500000);
   });
 
-  describe('Product', () => {
-    it('생성 시 상품의 정보는 올바르게 설정되어야 한다.', () => {
+  describe('상품 등록 시', () => {
+    it('상품의 정보는 올바르게 생성되어야 한다.', () => {
       // given
       const name = '노트북';
       const price = 1000000;
@@ -251,15 +251,230 @@ describe('Shopping', () => {
 
 ## 4.4 테스트 추가하기
 
+테스트를 위해 Shopping 과정을 구현할 ShoppingService를 만들었습니다.
+
+> [Shopping.service.ts](../../src/ch04/Shopping.service.ts)
+
+```ts
+import { Buyer, Seller } from './Actor';
+import { Product } from './Product';
+
+export class ShoppingService {
+  registerProduct(seller: Seller, product: Product): boolean {
+    if (product.price <= 0 || product.quantity <= 0) {
+      return false;
+    }
+    seller.registerProduct(product.name, product.price, product.quantity);
+    return true;
+  }
+
+  purchaseProduct(buyer: Buyer, seller: Seller, productName: string, quantity: number): boolean {
+    const product = seller.findProduct(productName);
+
+    if (product === undefined) return false;
+
+    const totalPrice = product.price * quantity;
+    if (buyer.balance < totalPrice) return false;
+    if (product.quantity < quantity) return false;
+
+    buyer.purchase(product, quantity, totalPrice);
+    seller.sellProduct(product, quantity, totalPrice);
+
+    return true;
+  }
+}
+```
+
+추가된 두 메서드는 각각 다음과 같은 역할을 합니다.
+
+- `registerProduct`: 판매자가 새로운 상품 등록
+- `purchaseProduct`: 구매자가 판매자에게서 상품 구매
+
+두 기능을 구현하기 위해 Buyer, Seller, Product 각각의 객체에 메서드가 추가되었지만 그 내용은 따로 소개하지 않겠습니다.
+
+이제, 두 기능의 동작을 테스트해보겠습니다.
+
+> [shopping.spec.ts](../../test/ch04/shopping.spec.ts)
+
+```ts
+describe('ShoppingService', () => {
+  let shoppingService: ShoppingService;
+  let seller: Seller;
+  let buyer: Buyer;
+
+  beforeEach(() => {
+    shoppingService = new ShoppingService();
+    seller = new Seller('TestSeller', 1000);
+  });
+
+  describe('상품 등록 시', () => {
+    it('상품이 유효하면 성공한다.', () => {
+      const product = new Product('Valid Product', 10, 5, seller.nickname);
+      expect(shoppingService.registerProduct(seller, product)).toBe(true);
+    });
+  });
+
+  describe('상품 구매 시', () => {
+    let product: Product;
+
+    beforeEach(() => {
+      // 판매자가 상품을 등록한다.
+      product = new Product('Valid Product', 10, 5, seller.nickname);
+      shoppingService.registerProduct(seller, product);
+    });
+
+    it('모든 조건이 만족되면 구매가 성공하고, 각 객체의 상태가 올바르게 업데이트된다.', () => {
+      // given
+      buyer = new Buyer('TestBuyer', 1000);
+      const quantity = 2;
+      const totalPrice = product.price * quantity; // 10 * 2 = 20
+
+      // when
+      const result = shoppingService.purchaseProduct(buyer, seller, product.name, quantity);
+      
+      // then
+      expect(result).toBe(true);
+
+      // 1. 구매자의 상품 리스트에 상품이 추가되었는지 확인
+      expect(buyer.products.length).toBe(1);
+      expect(buyer.products[0].name).toBe(product.name);
+
+      // 2. 구매자의 잔액에서 총 가격만큼 차감되었는지 확인
+      expect(buyer.balance).toBe(1000 - totalPrice);
+
+      // 3. 판매자의 잔액이 총 가격만큼 증가되었는지 확인
+      expect(seller.balance).toBe(1000 + totalPrice);
+
+      // 4. 판매자의 상품 수량이 차감되었으며
+      const updatedProduct = seller.findProduct(product.name);
+      expect(updatedProduct?.quantity).toBe(product.quantity - quantity);
+    });
+  });
+});
+```
+
+이렇게 올바른 상품이 주어졌을 때에 성공하는 케이스에 대한 테스트가 작성되었습니다.
+
 > [!IMPORTANT]
 > 모든 public 메소드를 테스트하는 것이 아니라, 위험요인을 기준으로 테스트를 작성해야 합니다. 테스트의 주요 목적은 향후 발생할 수 있는 버그를 찾는 것입니다.
 
 ## 4.5 픽스처 수정하기
 
-> [!WARNING]
-> 테스트에서 객체를 공유하도록 설정하면 테스트 간 독립성이 깨질 수 있습니다. 각 테스트는 독립적으로 실행될 수 있어야 합니다.
+실무에서 사용되는 대부분의 테스트 코드는 픽스처를 그대로 가져와 속성을 비교하는 것이 아니라 픽스터가 수정되는 경우가 대부분을 차지 합니다.
 
-[픽스처 관련 내용...]
+위 테스트에서는 상품 구매 테스트가 그 예시에 속하겠네요.
+
+> [shopping.spec.ts](../../test/ch04/shopping.spec.ts)
+
+```ts
+describe('ShoppingService', () => {
+  let shoppingService: ShoppingService;
+  let seller: Seller;
+  let buyer: Buyer;
+
+  beforeEach(() => {
+    shoppingService = new ShoppingService();
+    seller = new Seller('TestSeller', 1000);
+  });
+
+  describe('상품 구매 시', () => {
+    let product: Product;
+
+    beforeEach(() => {
+      // 판매자가 상품을 등록한다.
+      product = new Product('Valid Product', 10, 5, seller.nickname);
+      shoppingService.registerProduct(seller, product);
+    });
+
+    it('모든 조건이 만족되면 구매가 성공하고, 각 객체의 상태가 올바르게 업데이트된다.', () => {
+      // given
+      buyer = new Buyer('TestBuyer', 1000);
+      const quantity = 2;
+      const totalPrice = product.price * quantity; // 10 * 2 = 20
+
+      // when
+      const result = shoppingService.purchaseProduct(buyer, seller, product.name, quantity);
+      
+      // then
+      expect(result).toBe(true);
+
+      // 1. 구매자의 상품 리스트에 상품이 추가되었는지 확인
+      expect(buyer.products.length).toBe(1);
+      expect(buyer.products[0].name).toBe(product.name);
+
+      // 2. 구매자의 잔액에서 총 가격만큼 차감되었는지 확인
+      expect(buyer.balance).toBe(1000 - totalPrice);
+
+      // 3. 판매자의 잔액이 총 가격만큼 증가되었는지 확인
+      expect(seller.balance).toBe(1000 + totalPrice);
+
+      // 4. 판매자의 상품 수량이 차감된다.
+      const updatedProduct = seller.findProduct(product.name);
+      expect(updatedProduct?.quantity).toBe(product.quantity - quantity);
+    });
+  });
+});
+```
+
+그것과 별개로 해당 테스트는 하나의 it 구문에서 두 가지 이상의 속성을 검증하고 있습니다. 이렇게 되면 if문처럼 앞의 검증 통과하지 못하면 이후의 검증이 진행되지 않습니다.
+
+즉, 가능하다면 하나의 it 구문에는 가능하면 하나의 속성을 검증하는 식으로 변경하는게 좋습니다.
+
+> [shopping.spec.ts](../../test/ch04/shopping.spec.ts)
+
+```ts
+describe('ShoppingService', () => {
+  let shoppingService: ShoppingService;
+  let seller: Seller;
+  let buyer: Buyer;
+
+  beforeEach(() => {
+    shoppingService = new ShoppingService();
+    seller = new Seller('TestSeller', 1000);
+  });
+
+  describe('상품 구매 시', () => {
+    let product: Product;
+
+    beforeEach(() => {
+      // 판매자가 상품을 등록한다.
+      product = new Product('Valid Product', 10, 5, seller.nickname);
+      shoppingService.registerProduct(seller, product);
+    });
+
+    describe('결과가 성공이라면,', () => {
+      let quantity: number;
+      let totalPrice: number;
+
+      beforeEach(() => {
+        buyer = new Buyer('TestBuyer', 1000);
+        quantity = 2;
+        totalPrice = product.price * quantity;
+        shoppingService.purchaseProduct(buyer, seller, product.name, quantity);
+      });
+
+      it('구매자의 상품 리스트에 상품이 추가된다.', () => {
+        expect(buyer.products.length).toBe(1);
+        expect(buyer.products[0].name).toBe(product.name);
+      });
+
+      it('구매자의 잔액에서 총 가격만큼 차감된다.', () => {
+        expect(buyer.balance).toBe(1000 - totalPrice);
+      });
+
+      it('판매자의 잔액이 총 가격만큼 증가된다.', () => {
+        expect(seller.balance).toBe(1000 + totalPrice);
+      });
+
+      it('판매자의 상품 수량이 차감된다.', () => {
+        expect(seller.findProduct(product.name)?.quantity).toBe(5 - quantity);
+      });
+    });
+  });
+});
+```
+
+저는 위 처럼 it을 통해 검증 내용을 설명하고 검증하고자 하는 속성별로 분리를 해보았습니다.
 
 ## 4.6 경계 조건 검사하기
 
@@ -269,7 +484,60 @@ describe('Shopping', () => {
 > - 유효하지 않은 입력값
 > - 최대/최소값 경계
 
-[경계 조건 테스트 예시...]
+지금의 상품 구매 로직은 다음과 같은 경우에 실패하는 조건을 가집니다.
+
+1. 구매자의 소지금이 구매하고자 하는 총 금액 보다 적은 경우
+2. 판매자의 상품 수량이 구매자가 요구하는 수량 보다 적은 경우
+3. 판매자가 해당 상품을 가지고 있지 않은 경우
+
+테스트를 통해 이런 경계 조건을 검증함으로서 프로그램에 대한 신뢰도를 높일 수 있습니다.
+
+다음은 위 경계 조건에 대한 테스트 입니다.
+
+> [shopping.spec.ts](../../test/ch04/shopping.spec.ts)
+
+```ts
+describe('ShoppingService', () => {
+  let shoppingService: ShoppingService;
+  let seller: Seller;
+  let buyer: Buyer;
+
+  beforeEach(() => {
+    shoppingService = new ShoppingService();
+    seller = new Seller('TestSeller', 1000);
+  });
+
+  describe('상품 구매 시', () => {
+    let product: Product;
+
+    beforeEach(() => {
+      // 판매자가 상품을 등록한다.
+      product = new Product('Valid Product', 10, 5, seller.nickname);
+      shoppingService.registerProduct(seller, product);
+    });
+    
+    describe('결과가 실패라면,', () => {
+      it('구매자의 잔액이 부족하면 구매에 실패한다.', () => {
+        buyer = new Buyer('TestBuyer', 10);
+        const quantity = 2; // totalPrice = 20 > buyer.balance
+        const result = shoppingService.purchaseProduct(buyer, seller, product.name, quantity);
+        expect(result).toBe(false);
+      });
+
+      it('판매자의 상품 수량이 부족하면 구매에 실패한다.', () => {
+        const quantity = 10; // product.quantity는 5이므로 부족
+        const result = shoppingService.purchaseProduct(buyer, seller, product.name, quantity);
+        expect(result).toBe(false);
+      });
+
+      it('판매자가 해당 상품을 가지고 있지 않으면 구매에 실패한다.', () => {
+        const result = shoppingService.purchaseProduct(buyer, seller, 'NonExistent Product', 1);
+        expect(result).toBe(false);
+      });
+    });
+  });
+});
+```
 
 ## 4.7 끝나지 않은 여정
 
