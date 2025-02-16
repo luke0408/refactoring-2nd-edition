@@ -49,5 +49,9 @@ export class Seller {
     return this._soldProducts;
   }
 
-  // ... 메서드들
+  registerProduct(name: string, price: number, quantity: number) {
+    const product = new Product(name, price, quantity, this.nickname);
+    this._soldProducts.push(product);
+  }
+
 }
