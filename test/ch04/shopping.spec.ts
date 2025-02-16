@@ -48,54 +48,53 @@ describe('ShoppingService', () => {
       shoppingService.registerProduct(seller, product);
     });
 
-    it('모든 조건이 만족되면 구매가 성공하고, 각 객체의 상태가 올바르게 업데이트된다.', () => {
-      // given
-      buyer = new Buyer('TestBuyer', 1000);
-      const quantity = 2;
-      const totalPrice = product.price * quantity; // 10 * 2 = 20
+    describe('결과가 성공이라면,', () => {
+      let quantity: number;
+      let totalPrice: number;
 
-      // when
-      const result = shoppingService.purchaseProduct(buyer, seller, product.name, quantity);
-      
-      // then
-      expect(result).toBe(true);
+      beforeEach(() => {
+        buyer = new Buyer('TestBuyer', 1000);
+        quantity = 2;
+        totalPrice = product.price * quantity;
+        shoppingService.purchaseProduct(buyer, seller, product.name, quantity);
+      });
 
-      // 1. 구매자의 상품 리스트에 상품이 추가되었는지 확인
-      expect(buyer.products.length).toBe(1);
-      expect(buyer.products[0].name).toBe(product.name);
+      it('구매자의 상품 리스트에 상품이 추가된다.', () => {
+        expect(buyer.products.length).toBe(1);
+        expect(buyer.products[0].name).toBe(product.name);
+      });
 
-      // 2. 구매자의 잔액에서 총 가격만큼 차감되었는지 확인
-      expect(buyer.balance).toBe(1000 - totalPrice);
+      it('구매자의 잔액에서 총 가격만큼 차감된다.', () => {
+        expect(buyer.balance).toBe(1000 - totalPrice);
+      });
 
-      // 3. 판매자의 잔액이 총 가격만큼 증가되었는지 확인
-      expect(seller.balance).toBe(1000 + totalPrice);
+      it('판매자의 잔액이 총 가격만큼 증가된다.', () => {
+        expect(seller.balance).toBe(1000 + totalPrice);
+      });
 
-      // 4. 판매자의 상품 수량이 차감되었으며, 수량이 0이면 상품이 제거된다.
-      const updatedProduct = seller.findProduct(product.name);
-      if (product.quantity - quantity === 0) {
-        expect(updatedProduct).toBeUndefined();
-      } else {
-        expect(updatedProduct?.quantity).toBe(product.quantity - quantity);
-      }
+      it('판매자의 상품 수량이 차감된다.', () => {
+        expect(seller.findProduct(product.name)?.quantity).toBe(5 - quantity);
+      });
     });
 
-    it('구매자의 잔액이 부족하면 구매에 실패한다.', () => {
-      // 잔액이 부족한 구매자 생성 (예: 잔액 10)
-      buyer = new Buyer('TestBuyer', 10);
-      const quantity = 2; // totalPrice = 20 > buyer.balance
-      const result = shoppingService.purchaseProduct(buyer, seller, product.name, quantity);
-      expect(result).toBe(false);
-    });
+    describe('결과가 실패라면,', () => {
+      it('구매자의 잔액이 부족하면 구매에 실패한다.', () => {
+        buyer = new Buyer('TestBuyer', 10);
+        const quantity = 2; // totalPrice = 20 > buyer.balance
+        const result = shoppingService.purchaseProduct(buyer, seller, product.name, quantity);
+        expect(result).toBe(false);
+      });
 
-    it('판매자의 상품 수량이 부족하면 구매에 실패한다.', () => {
-      const quantity = 10; // product.quantity는 5이므로 부족
-      const result = shoppingService.purchaseProduct(buyer, seller, product.name, quantity);
-      expect(result).toBe(false);
-    });
+      it('판매자의 상품 수량이 부족하면 구매에 실패한다.', () => {
+        const quantity = 10; // product.quantity는 5이므로 부족
+        const result = shoppingService.purchaseProduct(buyer, seller, product.name, quantity);
+        expect(result).toBe(false);
+      });
 
-    it('판매자가 해당 상품을 가지고 있지 않으면 구매에 실패한다.', () => {
-      const result = shoppingService.purchaseProduct(buyer, seller, 'NonExistent Product', 1);
-      expect(result).toBe(false);
+      it('판매자가 해당 상품을 가지고 있지 않으면 구매에 실패한다.', () => {
+        const result = shoppingService.purchaseProduct(buyer, seller, 'NonExistent Product', 1);
+        expect(result).toBe(false);
+      });
     });
   });
 });
