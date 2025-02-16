@@ -176,6 +176,9 @@ export function statement(
 
 statement() 함수에 대한 테스트 코드는 다음과 같이 작성했습니다.
 
+> [!NOTE]
+> 테스트 코드를 작성하는 것은 리팩토링의 중요한 첫 단계로, 코드가 예상대로 작동하는지 검증할 수 있는 방법을 제공합니다.
+
 > statement.spec.ts
 
 ```ts
@@ -213,11 +216,15 @@ describe('StatementTest', () => {
 
 위 테스트 코드는 [jest](https://jestjs.io/) 라이브러리를 사용해 작성했으며 `npm run test`를 통해 실행 가능합니다.
 
+> [!TIP]
+> `jest`는 자바스크립트 코드의 테스트를 작성하고 실행할 수 있는 강력한 테스팅 프레임워크입니다. `npm run test` 명령어를 사용하여 테스트를 자동화하고, 코드 변경 후 결과를 빠르게 확인할 수 있습니다.
+
 ## 1.4 statement() 함수 쪼개기
 
-statement() 함수 중간에는 switch 문이 있습니다. 이 switch 문을 살펴보면 한 번의 공연에 대한 요금을 계산하고 있습니다.
+`statement()` 함수 중간에는 `switch` 문이 있습니다. 이 `switch` 문을 살펴보면 한 번의 공연에 대한 요금을 계산하고 있습니다.
 
-> statement() 함수의 switch 문
+> [!IMPORTANT]  
+> `statement()` 함수의 `switch` 문  
 
 ```ts
 // 문제의 스위치문 
@@ -231,7 +238,7 @@ switch (play?.type) {
    case 'comedy':
     thisAmount = 30000;
     if (perf.audience > 20) {
-  thisAmount += 10000 + 500 * (perf.audience - 20);
+      thisAmount += 10000 + 500 * (perf.audience - 20);
     }
     thisAmount += 300 * perf.audience;
     break;
@@ -242,27 +249,34 @@ switch (play?.type) {
 
 이러한 사실은 코드 분석을 하면서 얻은 정보입니다.
 
-워드 커닝햄(Ward Cunningham) 이 말하길, 이런 식으로 파악한 정보는 휘발성이 높기로 악명 높은 저장 장치인 내 머릿속에 기록되므로, 잊지 않으려면 재빨리 코드에 반영해야 합니다.
+> [!NOTE]  
+> **워드 커닝햄(Ward Cunningham)**은 다음과 같이 말했습니다.  
+> > "이런 식으로 파악한 정보는 휘발성이 높기로 악명 높은 저장 장치인 내 머릿속에 기록되므로, 잊지 않으려면 재빨리 코드에 반영해야 한다."
 
-그러면 다음번에 코드를 볼 때, 다시 분석하지 않아도 코드 스스로가 자신이 하는 일이 무엇인지 이야기해줄 것입니다.
+이렇게 하면 다음번에 코드를 볼 때, 다시 분석하지 않아도 코드 스스로가 자신이 하는 일이 무엇인지 이야기해줄 것입니다.
 
-여기서는 코드 조각을 별도 함수로 추출하는 방식으로 앞서 파악한 정보를 코드에 반영할 것입니다.
+### 함수 추출하기
 
-추출한 함수에는 그 코드가 하는 일을 설명하는 이름을 지워준다. 이름은 amountFor(performance) 정도면 적당해 보입니다.
+여기서는 **코드 조각을 별도 함수로 추출**하는 방식으로 앞서 파악한 정보를 코드에 반영할 것입니다.
 
-먼저 별도 함수로 빼냈을 때 유효범위를 벗어나는 변수, 즉 새 함수에서 필요한 변수들을 뽑습니다.
+추출한 함수에는 그 코드가 하는 일을 설명하는 이름을 지어줍니다. 예를 들어, `amountFor(performance)`라는 이름이 적절해 보입니다.
 
-여기서는 performance, play, thisAmount 가 있습니다.
+별도 함수로 뽑았을 때 **유효범위를 벗어나는 변수**(즉, 새 함수에서 필요한 변수)를 확인해 보겠습니다.
 
-뽑은 변수에서 performance 와 play 같은 경우는 값을 참조만 하지 변경하지 않으니까 새 함수의 파라미터로 전달하면 됩니다.
+- `performance`
+- `play`
+- `thisAmount`
 
-그치만 thisAmount 같은 경우는 새 함수에서 변경을 하는데 이는 주의해서 다뤄야합니다.
+이 중에서 `performance`와 `play`는 값을 **참조만** 하기 때문에 **새 함수의 파라미터로 전달**하면 됩니다.  
+그러나 `thisAmount`는 새 함수에서 변경되므로 주의해야 합니다.
 
-여기서는 새 함수에서 변경하는 함수가 thisAmount 밖에 없으니까 이것을 새 함수에서 선언하고 리턴해주는 방식으로 사용하면 됩니다.
+> [!CAUTION]  
+> `thisAmount`는 새 함수에서 값을 변경합니다.  
+> 따라서 **새 함수에서 선언하고 리턴**하는 방식으로 처리해야 합니다.
 
-이렇게 리팩토링한 결과는 다음과 같습니다.
+#### 리팩토링된 코드
 
-> statement()
+> `statement()` 함수
 
 ```ts
 export function statement(
@@ -303,7 +317,7 @@ export function statement(
 };
 ```
 
-> amountFor()
+> `amountFor()` 함수
 
 ```ts
 function amountFor (
@@ -332,10 +346,11 @@ function amountFor (
 };
 ```
 
-이제 test를 돌려 잘 작동하는 것을 확인해봅시다. <br>
-*(이후에는 test 코드가 변경되는 지점에서만 test 결과를 첨부하겠습니다.)*
+#### 테스트 실행
 
-> npm run test 결과
+> [!NOTE]  
+> 이제 테스트를 실행하여 코드가 정상적으로 작동하는지 확인해 보겠습니다.  
+> (이후에는 테스트 코드가 변경되는 지점에서만 테스트 결과를 첨부하겠습니다.)
 
 ```bash
 $ ~/refactoring-2nd-edition{master}$ npm run test
@@ -354,21 +369,31 @@ Time:        6.736 s, estimated 7 s
 Ran all test suites.
 ```
 
-다행이도 테스트는 한번에 통과했습니다. 그리고 함수를 추출했으니 추출된 함수 코드를 자세히 들여다보면서 지금보다 명확하게 표현할 수 있는 간단한 방법은 없는지 검토합니다.
+#### 변수 이름 개선
 
-가장 먼저 변수의 이름을 더 명확하게 바꿔봅시다. thisAmount 의 이름은 result 로 변경하는게 가능합니다.
+`thisAmount`라는 변수명은 계산된 요금을 담는 변수입니다.
+더 직관적인 `result`로 이름을 변경하면 가독성이 향상될 것입니다.
 
 ### Play 변수 제거하기
 
-amountFor()의 매개변수를 살펴보면서 이 값들이 어디서 오는지 알아봅시다. preformance는 반복문을 돌때마다 변경되어 들어오는 반면 play는 개별 공연(preformence)에서 오기 때문에 사실 매개변수로 전달할 필요가 없다.
+`amountFor()`의 매개변수를 살펴보면서 이 값들이 어디서 오는지 알아봅시다.  
 
-단순하게 이 값을 계산해주는 함수를 만들어 amountFor() 내부에서 호출하기만 하면 됩니다. 
+`performance`는 반복문을 돌 때마다 변경되는 값이지만, `play`는 개별 공연(`performance`)에서 가져올 수 있으므로 **매개변수로 전달할 필요가 없습니다.**  
 
-마틴 파울러는 긴 함수를 잘게 쪼갤 때마다 play 같은 변수를 최대한 제거합니다. 이런 임시 변수들 때문에 로컬 범위에 존재하는 이름이 늘어나서 추출 작업이 복잡해 지는 것을 방지할 수 있습니다.
+> [!TIP]  
+> **로컬 범위의 변수를 줄이면 함수 추출이 쉬워집니다.**  
+> - 지역 변수를 줄이면 유효 범위를 신경 쓸 대상이 줄어듭니다.  
+> - 그 결과 **함수 추출 작업이 간단해지고 가독성이 향상**됩니다.
 
-이를 해결해주는 리팩터링으로는 `임시 변수를 질의 함수로 바꾸기` 기법을 사용할 수 있습니다.
+#### 해결 방법: `playFor()` 함수 추가
 
-이제 다음과 같이 변경된 코드를 볼 수 있습니다.
+우리는 `play` 값을 직접 매개변수로 전달하는 대신, **해당 값을 반환하는 별도 함수를 만들고 `amountFor()` 내부에서 호출**하면 됩니다.
+
+> [!IMPORTANT]  
+> 마틴 파울러는 긴 함수를 잘게 쪼갤 때마다 `play` 같은 변수를 **최대한 제거**합니다.  
+> 임시 변수들이 많아지면 **추출 작업이 복잡해질 수 있기 때문입니다.**
+
+#### `playFor()` 함수 추가
 
 > playFor()
 
@@ -379,6 +404,13 @@ function playFor(
   return plays[performance.playID];
 };
 ```
+
+이제 `statement()` 함수에서 `play` 변수를 직접 사용하지 않고 `playFor()` 함수를 호출하도록 수정할 수 있습니다.
+
+#### 변경된 `statement()` 함수
+
+> [!NOTE]  
+> `play` 변수를 **직접 사용하지 않고 `playFor(perf)`를 호출**하도록 변경하였습니다.
 
 > statement()
 
@@ -398,7 +430,7 @@ export function statement (
   }).format;
 
   for (let perf of invoice.performances) {
-    const play = playFor(perf); // <-- 우변을 함수로 변경
+    const play = playFor(perf); // <-- `playFor()` 함수 사용
     let thisAmount = 0;
 
     thisAmount = amountFor(play, perf);
@@ -421,20 +453,24 @@ export function statement (
 };
 ```
 
-이렇게 지역 변수를 제거하면 유효 범위를 신경써야할 대상이 줄어들기 때문에 함수 추출하기 작업이 훨씬 쉬워집니다.
+이제 `statement()` 함수에서 `play`를 **지역 변수로 선언할 필요가 없어졌습니다.**  
+따라서 **"변수 인라인 하기" 리팩토링**을 적용하여 매개변수를 제거할 수 있습니다.
 
-이제 다시 statement() 함수를 보면, playFor() 함수를 통해 play를 구하게 되었으니 `변수 인라인 하기`를 통해 매개변수를 제거 할 수 있게 되었습다.
+#### 매개변수 `play`와 `thisAmount` 제거
 
-이번에 제거하게 될 매개변수는 `play`와 `thisAmount` 입니다.
+> [!WARNING]  
+> **매개변수가 많아질수록 함수의 복잡도가 증가합니다.**  
+> - 불필요한 매개변수는 제거하는 것이 좋습니다.  
+> - `play`와 `thisAmount`를 제거하면 코드가 더욱 직관적으로 변합니다.
 
-> amountFor()
+> 변경된 `amountFor()` 함수
 
 ```ts
 function amountFor (
   performance: InvoiceType.PerformanceInfo
 ): number {
   let thisAmount: number = 0;
-  switch (playFor(performance).type) {
+  switch (playFor(performance).type) {  // <-- playFor() 직접 호출
     case 'tragedy':
       thisAmount = 40000;
       if (performance.audience > 30) {
@@ -454,6 +490,10 @@ function amountFor (
   return thisAmount;
 };
 ```
+
+#### 최종 `statement()` 함수
+
+이제 `statement()` 함수에서도 **"변수 인라인 하기"** 기법을 적용하여 `play`와 `thisAmount`를 직접 변수로 선언하지 않고 `playFor(perf)`와 `amountFor(perf)`를 직접 호출하도록 변경하였습니다.
 
 > statement()
 
@@ -491,11 +531,29 @@ export function statement (
 }
 ```
 
+
 ### 적립 포인트 계산 코드 추출하기
 
-아직 처리해야할 변수가 두 개 더 남았습니다. 여기서도 perf는 값의 전달만 하면 되기 때문에 인라인으로 처리해도 됩니다. 하지만 volumeCredits는 반복분을 돌 때마다 값을 누적해야하기 때문에 이부분을 신경써줘야 합니다.
+이제 `statement()` 함수에서 **적립 포인트 계산 코드**를 별도 함수로 추출할 차례입니다.  
+아직 처리해야 할 변수가 **두 개** 더 남아 있습니다.
 
-이 상황에서 최선의 방법은 추출한 함수에서 volumeCredits의 복제본을 초기화 한 뒤에 계산 결과를 반환하게 하는 것입니다. 그 역할을 하는 함수에 volumeCreditsFor()이라는 이름을 붙여주었습니다.
+#### 변수 분석
+1. **`perf`**  
+   - 값만 참조하면 되므로 **인라인으로 처리 가능**
+2. **`volumeCredits`**  
+   - 반복문을 돌 때마다 값을 **누적해야 하므로 신경 써야 함**
+
+> [!WARNING]  
+> `volumeCredits`처럼 **누적되는 값**을 다룰 때는 주의가 필요합니다.  
+> - 새 함수에서 `volumeCredits`를 초기화한 후 값을 반환하는 방식이 적절합니다.
+
+이를 해결하기 위해 **적립 포인트를 계산하는 `volumeCreditsFor()` 함수를 추출**하겠습니다.
+
+#### `volumeCreditsFor()` 함수 추출
+ 
+**적립 포인트 계산 로직을 별도 함수로 분리하면** `statement()` 함수가 더 간결해지고 가독성이 향상됩니다.
+
+또한, 적립 포인트 계산 로직을 독립적으로 수정·테스트할 수 있습니다.
 
 > volumeCreditsFor()
 
@@ -513,7 +571,14 @@ function volumeCreditsFor(
 }
 ```
 
+#### 변경된 `statement()` 함수
+
+이제 `statement()`에서 직접 적립 포인트를 계산하지 않고, `volumeCreditsFor(perf)`를 호출하도록 수정합니다.
+
+`volumeCredits += volumeCreditsFor(perf);` 한 줄을 추가하여 적립 포인트 계산이 자동으로 수행되도록 할 수 있습니다.
+
 > statement()
+
 ```ts
 export function statement (
   invoice: InvoiceType.Invoice, 
@@ -530,7 +595,7 @@ export function statement (
   }).format;
 
   for (let perf of invoice.performances) {
-    volumeCredits += volumeCreditsFor(perf);
+    volumeCredits += volumeCreditsFor(perf); // ✅ 적립 포인트 계산 함수 호출
 
     // 청구 내역을 출력합니다.
     result += ` ${playFor(perf).name}: ${format(amountFor(perf) / 100)} (${perf.audience}석)\n`;
@@ -546,53 +611,24 @@ export function statement (
 
 ### format 변수 제거하기
 
-앞에서 설명했듯이 임시 변수는 나중에 문제를 일으킬 수 있습니다. 임시 변수는 자신이 속한 루틴에서만 의미가 있어서 루틴이 길고 복잡합니다. 따라서 이번 리팩토링에서는 이런 변수를 제거하고자 합니다.
+앞에서 설명했듯이 **임시 변수**는 루틴이 길고 복잡할수록 문제가 될 수 있습니다.  
+임시 변수는 자신이 속한 루틴에서만 의미가 있어서 **불필요한 지역 변수**가 늘어나고 유지보수가 어려워집니다.  
 
-format은 임시 변수에 함수를 대입한 형태인데, 이를 직접 함수로 선언해 사용하는 형태로 바꾸어 보았습니다.
+> [!WARNING]  
+> **임시 변수를 줄이면 코드 가독성이 향상됩니다.**  
+> - 지역 변수는 함수 내부에서만 의미가 있어 유지보수가 어렵습니다.  
+> - 되도록 **질의 함수로 변환하여 직접 호출**하는 것이 좋습니다.
 
-> format()
+#### `format`을 별도 함수로 추출
 
-```ts
-function format(number: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-  }).format(number);
-}
-```
+임시 변수였던 `format`을 별도 함수로 분리하고,  
+**함수 이름을 `usd`로 변경**하여 기능을 더 명확하게 표현하겠습니다.
 
-> statement()
+> [!IMPORTANT]  
+> - **"화폐 단위 변환"을 하는 함수이므로** 보다 명확한 `usd()`라는 이름을 사용  
+> - **공통적으로 들어가는 `/ 100` 연산을 함수 내부로 이동**하여 중복 제거
 
-```ts
-export function statement (
-  invoice: InvoiceType.Invoice, 
-  plays: PlayType.Plays
-): string {
-  let totalAmount: number = 0;
-  let volumeCredits: number = 0;
-  let result: string = `청구 내역 (고객명: ${invoice.customer})\n`;
-
-  for (let perf of invoice.performances) {
-    volumeCredits += volumeCreditsFor(perf);
-
-    // 청구 내역을 출력합니다.
-    result += ` ${playFor(perf).name}: ${format(amountFor(perf) / 100)} (${perf.audience}석)\n`;
-    totalAmount += amountFor(perf);
-  }
-  
-  result += `총액: ${format(totalAmount / 100)}\n`;
-  result += `적립 포인트: ${volumeCredits}점\n`;
-  
-  return result;
-}
-```
-
-하지만 format 이라는 함수명은 화패 단위 맞추기라는 기능을 재대로 설명하지 못하는 것 같아 다음과 같이 usd 라는 이름으로 변경해주었습니다.
-
-또한 공통적으로 들어가는 나누기 100 로직도 함수 내부로 이동 시킴으로써 세부적인 기능을 함수 내부로 숨겼다.
-
-> usd()
+> 변경된 `usd()` 함수
 
 ```ts
 function usd(number: number): string {
@@ -604,7 +640,7 @@ function usd(number: number): string {
 }
 ```
 
-> statement()
+> 변경된 `statement()` 함수
 
 ```ts
 export function statement (
@@ -632,9 +668,16 @@ export function statement (
 
 ### volumeCredits 변수 제거하기
 
-해당 변수는 반복문을 한 바뀌 돌 때마다 값을 누적하기 때문에 리팩토링이 까다롭습니다. 때문에 먼저 반복분 쪼개기를 통해 volumeCredis 값이 누적되는 부분을 따로 빼줘야합니다.
+적립 포인트(`volumeCredits`)는 **반복문을 돌 때마다 값을 누적**해야 하기 때문에,  
+리팩토링이 까다롭습니다.  
+먼저 **반복문 쪼개기**를 수행하여 `volumeCredits` 값을 누적하는 부분을 분리하겠습니다.
 
-> statement()
+> [!TIP]  
+> **"반복문 쪼개기" 기법을 사용하면 코드의 역할이 명확해집니다.**  
+> - 반복문 하나에서는 **청구 내역을 출력**  
+> - 다른 반복문에서는 **적립 포인트를 계산**
+
+1️⃣ 반복문 쪼개기
 
 ```ts
 export function statement (
@@ -662,42 +705,23 @@ export function statement (
 }
 ```
 
-이어서 문장 슬라이스하기를 적용해서 volumeCredits 변수를 선언하는 문장을 반복문 앞으로 옮긴다.
+> [!CAUTION]  
+> **반복문을 추가하면 성능이 느려지지 않을까?**  
+> - 최신 컴파일러는 최적화를 자동으로 수행합니다.  
+> - 따라서 반복문을 쪼갠다고 해서 성능이 크게 저하되지 않습니다.  
+> - 실제 테스트에서도 **성능 차이가 거의 없었습니다.**
 
-> statement()
+#### volumeCredits 변수를 별도 함수로 추출하기
 
-```ts
-export function statement (
-  invoice: InvoiceType.Invoice, 
-  plays: PlayType.Plays
-): string {
-  let totalAmount: number = 0;
-  let result: string = `청구 내역 (고객명: ${invoice.customer})\n`;
+> [!NOTE]  
+> **이제 "변수 인라인 하기"를 쉽게 적용할 수 있습니다.**  
+> - `volumeCredits`를 별도 함수로 추출하여 `totalVolumeCredits()` 함수로 변환  
+> - 반복문 내부에서 직접 계산하는 것이 아니라 **함수 호출로 대체**
 
-  for (let perf of invoice.performances) {
-    // 청구 내역을 출력합니다.
-    result += ` ${playFor(perf).name}: ${usd(amountFor(perf))} (${perf.audience}석)\n`;
-    totalAmount += amountFor(perf);
-  }
-
-  let volumeCredits: number = 0;
-  for (let perf of invoice.performances) {
-    volumeCredits += volumeCreditsFor(perf);
-  }
-  
-  result += `총액: ${usd(totalAmount)}\n`;
-  result += `적립 포인트: ${volumeCredits}점\n`;
-  
-  return result;
-}
-```
-
-이제 임시 변수를 질의 함수로 바꾸기가 수월해졌으니 volumeCredits 변수를 제거할 수 있습니다. 우선 함수를 추출 해봅시다.
-
-> totalVolumeCredits()
+2️⃣ `totalVolumeCredits()` 함수 추가
 
 ```ts
-function totalVolumeCredits() {
+function totalVolumeCredits(): number {
   let volumeCredits: number = 0;
   for (let perf of invoice.performances) {
     volumeCredits += volumeCreditsFor(perf);
@@ -706,9 +730,7 @@ function totalVolumeCredits() {
 }
 ```
 
-이후 volumeCredits 변수를 인라인 하면 다음과 같은 코드를 얻을 수 있습니다.
-
-> statement()
+3️⃣ `statement()`에서 `volumeCredits` 변수 제거
 
 ```ts
 export function statement (
@@ -719,55 +741,29 @@ export function statement (
   let result: string = `청구 내역 (고객명: ${invoice.customer})\n`;
   
   for (let perf of invoice.performances) {
-    // 청구 내역을 출력합니다.
     result += ` ${playFor(perf).name}: ${usd(amountFor(perf))} (${perf.audience}석)\n`;
     totalAmount += amountFor(perf);
   }
   
   result += `총액: ${usd(totalAmount)}\n`;
-  result += `적립 포인트: ${totalVolumeCredits();}점\n`;
+  result += `적립 포인트: ${totalVolumeCredits()}점\n`;
   
   return result;
 }
 ```
 
-여기서 잠시 멈추고 방금 한 일에 대해서 생각해봅시다. 무엇보다도 반복문을 쪼개서 성능이 느려지진 않을까 걱정할 수 있습니다.
+### totalAmount 변수 제거하기
 
-하지만 실제로 변경 전후의 코드를 테스트 해본 결과는 다음과 같습니다.
+이제 **totalAmount 변수도 제거**할 차례입니다.  
+앞에서 진행한 **"변수 인라인하기"** 기법을 동일하게 적용하면 됩니다.
 
-```bash
-// for문 쪼개기 적용 전
-PASS  test/ch01/statement.spec.ts (5.967 s)
- StatementTest
-   ✓ statement는 string 결과 값을 도출할 수 있습니다. (22 ms)
+> [!TIP]  
+> **totalAmount 변수도 totalVolumeCredits와 같은 방식으로 제거할 수 있습니다.**
 
-// for문 쪼개기 적용 후
-PASS  test/ch01/statement.spec.ts (6.364 s)
- StatementTest
-   ✓ statement는 string 결과 값을 도출할 수 있습니다. (26 ms)
-```
-
-실제 이번 리팩터링 전과 후의 실행 시간은 거의 차이가 나지 않습니다. 똑똑한 컴파일러들은 최신 캐싱 기법 등으로 무장하고 있어 우리의 직관을 초월하는 결과를 보여주기 때문에, 이런 성능에 대한 우리의 예측은 자주 실패하기 마련입니다.
-
-하지만 '대체로 그렇다'와 '항상 그렇다'는 엄연히 다릅니다. 때로는 리팩터링이 성능에 큰 영향을 주기도 합니다. 그런 경우라도 마틴 파울러는 개의치 않고 우선 리팩터링을 진행한다고 합니다. 이는 "잘 다듬어진 코드가 성능 개선 작업도 훨씬 수월하기 때문"이라는 그의 경험에서 나온 결과입니다.
-
-만약 리팩터링 때문에 성능이 떨어진다면, 일단 무시하고 진행한 뒤 이후에 성능을 다시 개선해봅시다.
-
-또한, volumeCredits 변수를 제거하는 과정을 아래와 같이 아주 잘게 나누웠다는 점에 집중해야합니다.
-
-1. **반복문 쪼개기**로 변수 값을 누적시키는 부분을 분리합니다.
-2. **문장 슬라이드 하기**로 변수 초기화 문장을 변수 값 누적 코드 바로 앞으로 옮긴다.
-3. **함수 추출하기**로 적립 포인트 계산 부분을 별도 함수로 추출합니다.
-4. **변수 인라인하기**로 volumeCredits 변수를 제거합니다.
-
-모든 순간 위 처럼 잘게 단계를 나누어 진행할 수 있는 건 아니겠지만, 그래도 상황이 복잡해지면 단계를 더 잘게 나누는 것을 추천합니다. 특히, 리팩터링 중간에 테스트가 실패하고 원인을 바로 찾지 못한다면 이전 커밋으로 돌아가 단계를 나누어 진행하면 문제를 해결할 가능성이 높습니다.
-
-자 이제 마지막으로 totalAmount도 앞에서 진행한 것과 같은 절차로 제거하겠습니다. 이땐 중간 과정은 생략하고 결과 코드만 보여주도록 하겠습니다.
-
-> totalAmount()
+#### `totalAmount()` 함수 추가
 
 ```ts
-function totalAmount() {
+function totalAmount(): number {
   let result: number = 0;
   for (let perf of invoice.performances) {
     result += amountFor(perf);
@@ -776,7 +772,7 @@ function totalAmount() {
 }
 ```
 
-> statement()
+#### 최종 `statement()` 함수
 
 ```ts
 export function statement (
@@ -798,9 +794,14 @@ export function statement (
 
 ## 1.5 중간 점검: 난무하는 중첩 함수
 
-지금까지의 코드를 한번 전체적으로 봐봅시다.
+지금까지의 코드를 한번 전체적으로 살펴봅시다.  
 
-> statement()
+현재 `statement()` 함수는 **출력할 문장을 생성하는 역할만 수행**하며, 실제 계산 로직은 **여러 개의 보조 함수로 분리**되었습니다.
+
+> [!TIP]  
+> **리팩토링의 핵심 목표는 "가독성"과 "유지보수성" 향상**  
+
+### 변경된 `statement()` 함수
 
 ```ts
 import { InvoiceType, PlayType } from '../types';
@@ -826,13 +827,13 @@ export function statement (
   result += `적립 포인트: ${totalVolumeCredits()}점\n`;
   
   return result;
-  
+
   /**
-   * totalAmount를 구합니다.
+   * 총액을 계산합니다.
    * 
-   * @returns 
+   * @returns 총 금액
    */
-  function totalAmount() {
+  function totalAmount(): number {
     let result: number = 0;
     for (let perf of invoice.performances) {
       result += amountFor(perf);
@@ -841,11 +842,11 @@ export function statement (
   }
 
   /**
-   * volumeCredites를 구합니다.
+   * 적립 포인트를 계산합니다.
    * 
-   * @returns 
+   * @returns 총 적립 포인트
    */
-  function totalVolumeCredits() {
+  function totalVolumeCredits(): number {
     let result: number = 0;
     for (let perf of invoice.performances) {
       result += volumeCreditsFor(perf);
@@ -854,10 +855,10 @@ export function statement (
   }
 
   /**
-   * USD 화패 단위에 맞게 값을 수정합니다.
+   * USD 화폐 단위로 변환합니다.
    * 
-   * @param number 
-   * @returns 
+   * @param number 원본 숫자
+   * @returns 변환된 화폐 값
    */
   function usd(number: number): string {
     return new Intl.NumberFormat('en-US', {
@@ -868,10 +869,10 @@ export function statement (
   }
 
   /**
-   * performance를 통해 play 값을 구합니다.
+   * 공연 정보를 조회합니다.
    * 
-   * @param performance 
-   * @returns 
+   * @param performance 공연 정보
+   * @returns 해당 공연의 play 정보
    */
   function playFor(
     performance: InvoiceType.PerformanceInfo
@@ -880,12 +881,12 @@ export function statement (
   };
 
   /**
-   * 청구 내역에 대한 금액을 구합니다.
+   * 개별 공연의 청구 금액을 계산합니다.
    * 
-   * @param performance 
-   * @returns 
+   * @param performance 공연 정보
+   * @returns 해당 공연의 금액
    */
-  function amountFor (
+  function amountFor(
     performance: InvoiceType.PerformanceInfo
   ): number {
     let thisAmount: number = 0;
@@ -912,8 +913,8 @@ export function statement (
   /**
    * 적립 포인트를 계산합니다.
    * 
-   * @param performance 
-   * @returns 
+   * @param performance 공연 정보
+   * @returns 적립 포인트
    */
   function volumeCreditsFor(
     performance: InvoiceType.PerformanceInfo
@@ -930,17 +931,33 @@ export function statement (
 };
 ```
 
-최상위 statement() 함수는 단 7줄이며, 출력할 문장만 생상하는 일만 합니다. 계산 함수 또한 모두 여러개의 보조 함수로 빼내어 결과적으로 각 계산 과정은 물론 전체 흐름 또한 이해하기 쉬워졌습니다.
+### 리팩토링 결과
+
+> [!NOTE]  
+> **최상위 `statement()` 함수는 단 7줄**  
+> - 오직 **출력할 문장을 생성하는 역할만 수행**  
+> - 계산 함수는 **모두 보조 함수로 분리되어 유지보수가 용이**  
+> - 전체 흐름이 **이해하기 쉬운 구조로 정리됨**  
+
+지금까지의 리팩토링을 통해 **가독성과 유지보수성이 대폭 향상**되었습니다. 🚀
 
 ## 1.6 계산 단계와 포맷팅 단계 분리하기
 
-이제 골격은 충분히 계선 되었으니 statement()의 HTML 버전을 만드는 작업을 살펴봅시다. 계산 코드가 모두 분리되었기 때문에 일곱 줄짜리 최상단 코드에 대응하는 HTML 버전만 작성하면 됩니다.
+이제 `statement()` 함수의 **HTML 버전**을 만들어 보겠습니다.  
+다행히, **계산 코드가 이미 모두 분리**되었기 때문에  
+**최상단 코드(`statement()`)에 대응하는 HTML 버전만 추가**하면 됩니다.
 
-하지만, 분리된 계산 함수들이 모두 statement() 안에 중첩 함수로 존재하고 있다는 문제가 있습니다. 먼저 이를 **단계 쪼개기**를 통해 해결해봅시다.
+> [!WARNING]  
+> 하지만, 현재 **모든 계산 함수가 `statement()` 안에 중첩 함수로 존재**합니다.  
+> - 이를 **단계 쪼개기(Decomposing Stage)** 기법을 사용하여 해결합니다.  
+> - `statement()`의 로직을 **"계산 단계"와 "출력 단계"**로 분리합니다.
 
-이번 **단계 쪼개기**의 목표는 statemnet()의 로직을 두 단계로 나누는 것입니다. 첫 단계에서는 satement()에 필요한 데이터를 처리하고, 다음 단계에서는 앞서 처리한 결과를 HTML로 표현하도록 해봅시다.
+### **계산 로직과 출력 로직 분리**
 
-이를 하기 위해 먼저 statement()를 분리해봅시다.
+첫 번째 단계에서는 `statement()`에 필요한 데이터를 처리하고,  
+두 번째 단계에서는 **이 데이터를 기반으로 HTML을 출력**하도록 변경합니다.
+
+> `statement()`를 `renderPlainText()`로 분리
 
 ```ts
 export function statement (
@@ -963,30 +980,27 @@ function renderPlainText(invoice: InvoiceType.Invoice, plays: PlayType.Plays) {
   return result;
 
   function totalAmount() { ... }
-
   function totalVolumeCredits() { ... }
-
   function usd(number: number): string { ... }
-
-  function playFor(
-    performance: InvoiceType.PerformanceInfo
-  ): PlayType.PlayInfo { ... };
-
-  function amountFor(
-    performance: InvoiceType.PerformanceInfo
-  ): number { ... };
-
-  function volumeCreditsFor(
-    performance: InvoiceType.PerformanceInfo
-  ): number { ... }
+  function playFor(performance: InvoiceType.PerformanceInfo): PlayType.PlayInfo { ... }
+  function amountFor(performance: InvoiceType.PerformanceInfo): number { ... }
+  function volumeCreditsFor(performance: InvoiceType.PerformanceInfo): number { ... }
 }
 ```
 
-다음으로 두 단계 사이의 중간 데이터 구조 역할을 할 객체를 만들어 renderPlainText()에 인수로 전달합니다.
+> [!IMPORTANT]  
+> **이제 `statement()`는 `renderPlainText()`를 호출하는 역할만 수행**합니다.  
+> - `renderPlainText()`가 계산 결과를 받아서 **출력을 담당**하도록 분리되었습니다.  
+> - 이제 **두 단계 사이에 중간 데이터를 전달할 수 있는 구조가 마련**되었습니다.
 
-해당 객체는 고객 데이터와 공연 정보를 가짐으로 renderPlainText()에서 필요 없어질 invoice 인수는 제거합니다.
+### **중간 데이터 구조 생성**
 
-> statement()
+출력 데이터를 만들기 전에,  
+**계산된 데이터를 저장할 중간 데이터 구조**를 만들겠습니다.  
+이제 `statement()`의 인자로 **invoice를 직접 전달하는 것이 아니라**  
+`statementData`라는 중간 데이터 객체를 전달하도록 변경합니다.
+
+> `statement()` 변경
 
 ```ts
 export function statement (
@@ -1002,7 +1016,7 @@ export function statement (
 };
 ```
 
-> readerPlainText()
+> `renderPlainText()` 변경
 
 ```ts
 function renderPlainText(data: StatementType.StatementData, plays: PlayType.Plays) {
@@ -1019,9 +1033,16 @@ function renderPlainText(data: StatementType.StatementData, plays: PlayType.Play
 }
 ```
 
-이제 연극 제목도 중간 데이터 구조에서 가져오도록 추가합니다. 이를 위해 공연 정보 레코드에 연극 데이터를 추가해야합니다.
+> [!TIP]  
+> **이제 `renderPlainText()`는 `statementData`에서 데이터를 읽어와 출력만 담당**합니다.  
+> - 따라서 `invoice`를 직접 전달할 필요가 없어졌습니다.
 
-> statement()
+### **연극 제목을 중간 데이터 구조에 추가**
+
+연극 제목을 `statementData`에서 가져올 수 있도록  
+**공연 정보 레코드에 연극 데이터를 추가**하겠습니다.
+
+> `statement()` 수정
 
 ```ts
 export function statement (
@@ -1030,7 +1051,7 @@ export function statement (
 ): string {
   const statementData: StatementType.StatementData = {} as StatementType.StatementData;
   statementData.customer = invoice.customer;
-  statementData.performances = invoice.performances.map(enrichPerformance)
+  statementData.performances = invoice.performances.map(enrichPerformance);
 
   return renderPlainText(statementData, plays);
 
@@ -1041,11 +1062,14 @@ export function statement (
 }
 ```
 
-사용된 타입 구조는 나중에 설명하는 것으로 하고, 이제 연극 정보를 담을 자리가 마련됐으니 실제로 데이터를 담아봅시다. 
+### **계산 데이터를 `statementData`에 추가**
 
-playFor()과 amountFor() 그리고 적립 포인트 계산 부분을 statement()에 옮기고 renderPlainText()에서 해당 함수를 사용하던 부분을 중간 데이터를 사용하도록 수정합니다.
+이제 `playFor()`, `amountFor()`, 그리고 적립 포인트 계산 부분을  
+`statement()`에 옮기고,  
+`renderPlainText()`에서 해당 함수를 사용하던 부분을  
+**중간 데이터를 사용하도록 수정**합니다.
 
-> statement()
+> `statement()` 변경
 
 ```ts
 export function statement(invoice: InvoiceType.Invoice, plays: PlayType.Plays): string {
@@ -1062,19 +1086,12 @@ export function statement(invoice: InvoiceType.Invoice, plays: PlayType.Plays): 
     result.play = playFor(result);
     result.amount = amountFor(result);
     result.volumeCredits = volumeCreditsFor(result);
-
     return result;
   }
-
-  function playFor(performance: InvoiceType.PerformanceInfo): PlayType.PlayInfo { ... }
-  function amountFor(performance: StatementType.PerformanceInfo): number { ... }
-  function totalAmount(data: StatementType.StatementData) { ... }
-  function totalVolumeCredits(data: StatementType.StatementData) { ... }
-  function volumeCreditsFor(performance: StatementType.PerformanceInfo): number { ... }
 }
 ```
 
-> renderPlainText()
+> `renderPlainText()` 변경
 
 ```ts
 function renderPlainText(data: StatementType.StatementData, plays: PlayType.Plays) {
@@ -1088,55 +1105,14 @@ function renderPlainText(data: StatementType.StatementData, plays: PlayType.Play
   result += `적립 포인트: ${data.totalVolumeCredits}점\n`;
 
   return result;
-
-  function usd(number: number): string { ... }
 }
 ```
 
-이후 가볍게 반복문 파이프라인으로 바꾸기를 적용해주었습니다.
+### **HTML 버전 추가**
 
-> statement() 함수 내부
+이제 `htmlStatement()`를 추가하여 HTML 버전을 출력할 수 있도록 합니다.
 
-```ts
-function totalAmount(data: StatementType.StatementData) {
-  return data.performances
-    .reduce((total, p) => total + p.amount, 0);
-}
-
-function totalVolumeCredits(data: StatementType.StatementData) {
-  return data.performances
-    .reduce((total, p) => total + p.volumeCredits, 0)
-}
-```
-
-이제 첫 단계인 "statement()에 필요한 데이터 처리'에 해당 하는 코드를 별도의 함수로 빼냅니다.
-
-> statement()
-
-```ts
-export function statement(invoice: InvoiceType.Invoice, plays: PlayType.Plays): string {
-  return renderPlainText(createStatementData(invoice, plays));
-}
-```
-
-> createStatementData()
-
-```ts
-function createStatementData(invoice: InvoiceType.Invoice, plays: PlayType.Plays) {
-  const statementData: StatementType.StatementData = {} as StatementType.StatementData;
-  statementData.customer = invoice.customer;
-  statementData.performances = invoice.performances.map(enrichPerformance);
-  statementData.totalAmount = totalAmount(statementData);
-  statementData.totalVolumeCredits = totalVolumeCredits(statementData);
-  return statementData;
-}
-```
-
-두 단계가 명확해졌으니 각 코드를 별도의 파일에 저장하면 드디어 HTML 버전을 작성할 준비가 끝납니다.
-
-HTML 버전은 간단하게 다음과 같이 작성 해보았습니다.
-
-> htmlStatement()
+> `htmlStatement()`
 
 ```ts
 export function htmlStatement(invoice: InvoiceType.Invoice, plays: PlayType.Plays): string {
@@ -1144,7 +1120,7 @@ export function htmlStatement(invoice: InvoiceType.Invoice, plays: PlayType.Play
 }
 ```
 
-> renderHtml()
+> `renderHtml()`
 
 ```ts
 function renderHtml(data: StatementType.StatementData) {
@@ -1163,52 +1139,17 @@ function renderHtml(data: StatementType.StatementData) {
 }
 ```
 
-> statement.spec.ts
-
-```ts
-describe('StatementTest', () => {
-  let invoiceData: InvoiceType.Invoices;
-  let playsData: PlayType.Plays;
-
-  beforeAll(async () => {
-    invoiceData = JSON.parse(require('fs').readFileSync('src/ch01/data/invoice.json', 'utf-8'));
-    playsData = JSON.parse(require('fs').readFileSync('src/ch01/data/plays.json', 'utf-8'));
-  });
-
-  it('statement는 string 결과 값을 도출할 수 있습니다.', async () => {
-    const result = statement(invoiceData[0], playsData);
-    expect(result).toBe(
-      '청구 내역 (고객명: BigCo)\n' +
-        ' Hamlet: $650.00 (55석)\n' +
-        ' As You Like It: $580.00 (35석)\n' +
-        ' Othello: $500.00 (40석)\n' +
-        '총액: $1,730.00\n' +
-        '적립 포인트: 47점\n',
-    );
-  });
-
-  it('statement는 html 결과 값을 도출할 수 있습니다.', async () => {
-    const result = htmlStatement(invoiceData[0], playsData);
-    expect(result).toBe(
-      '<h1>청구 내역 (고객명: BigCo)</h1>\n' +
-        '<table>\n' +
-        '<tr><th>연극</th><th>좌석 수</th><th>금액</th></tr>' +
-        '<tr><td>Hamlet</td><td>(55석)</td><td>$650.00</td></tr>\n' +
-        '<tr><td>As You Like It</td><td>(35석)</td><td>$580.00</td></tr>\n' +
-        '<tr><td>Othello</td><td>(40석)</td><td>$500.00</td></tr>\n' +
-        '</table>\n' +
-        '<p>총액: <em>$1,730.00</em></p>\n' +
-        '<p>적립 포인트: <em>47</em>점</p>\n',
-    );
-  });
-});
-```
-
 ## 1.7 중간 점검: 두 파일(과 두 단계)로 분리
 
-지금까지 작성한 코드의 상태를 점검해봅시다. 현재의 코드는 두개의 파일로 구성됩니다.
+지금까지 작성한 코드의 상태를 점검해봅시다.  
+현재의 코드는 **두 개의 파일로 구성**됩니다.
 
-> statement/index.ts
+- `statement/index.ts`: **출력 담당 (HTML 및 텍스트)**  
+- `statement/createStatementData.ts`: **계산 담당**  
+
+### **출력 로직 (`statement/index.ts`)**
+
+> `statement/index.ts`  
 
 ```ts
 import { InvoiceType, PlayType, StatementType } from '../types';
@@ -1216,93 +1157,34 @@ import { createStatementData } from './createStatementData';
 
 /**
  * 연극에 대한 청구 내역과 총액, 적립 포인트를 반환합니다.
- *
- * @param invoice
- * @param plays
- * @returns
  */
 export function statement(invoice: InvoiceType.Invoice, plays: PlayType.Plays): string {
   return renderPlainText(createStatementData(invoice, plays));
 }
 
 /**
- * 연극에 대한 청구 내역과 총액, 적립 포인트를 html의 형태로 반환합니다.
- *
- * @param invoice
- * @param plays
- * @returns
+ * 연극에 대한 청구 내역과 총액, 적립 포인트를 HTML의 형태로 반환합니다.
  */
 export function htmlStatement(invoice: InvoiceType.Invoice, plays: PlayType.Plays): string {
   return renderHtml(createStatementData(invoice, plays));
 }
-
-/**
- * 청구 내역을 html로 반환합니다.
- *
- * @param data
- * @returns
- */
-function renderHtml(data: StatementType.StatementData) {
-  let result = `<h1>청구 내역 (고객명: ${data.customer})</h1>\n`;
-  result += '<table>\n';
-  result += '<tr><th>연극</th><th>좌석 수</th><th>금액</th></tr>';
-  for (let perf of data.performances) {
-    result += `<tr><td>${perf.play.name}</td><td>(${perf.audience}석)</td>`;
-    result += `<td>${usd(perf.amount)}</td></tr>\n`;
-  }
-  result += '</table>\n';
-  result += `<p>총액: <em>${usd(data.totalAmount)}</em></p>\n`;
-  result += `<p>적립 포인트: <em>${data.totalVolumeCredits}</em>점</p>\n`;
-
-  return result;
-}
-
-/**
- * 청구 내역을 text로 출력합니다.
- *
- * @param data
- * @param plays
- * @returns
- */
-function renderPlainText(data: StatementType.StatementData) {
-  let result: string = `청구 내역 (고객명: ${data.customer})\n`;
-
-  for (let perf of data.performances) {
-    result += ` ${perf.play.name}: ${usd(perf.amount)} (${perf.audience}석)\n`;
-  }
-
-  result += `총액: ${usd(data.totalAmount)}\n`;
-  result += `적립 포인트: ${data.totalVolumeCredits}점\n`;
-
-  return result;
-}
-
-/**
- * USD 화패 단위에 맞게 값을 수정합니다.
- *
- * @param number
- * @returns
- */
-function usd(number: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-  }).format(number / 100);
-}
 ```
 
-> statement/createStatementData.ts
+> [!NOTE]  
+> `statement()`와 `htmlStatement()`가 동일한 `createStatementData()`를 사용하므로,  
+> **계산 로직을 중복하지 않고도 HTML 버전을 추가할 수 있습니다.**  
+
+---
+
+### **계산 로직 (`statement/createStatementData.ts`)**
+
+> `statement/createStatementData.ts`
 
 ```ts
 import { InvoiceType, PlayType, StatementType } from '../types';
 
 /**
  * statement에 필요한 데이터를 처리합니다.
- *
- * @param invoice
- * @param plays
- * @returns
  */
 export function createStatementData(invoice: InvoiceType.Invoice, plays: PlayType.Plays) {
   const result: StatementType.StatementData = {} as StatementType.StatementData;
@@ -1314,9 +1196,6 @@ export function createStatementData(invoice: InvoiceType.Invoice, plays: PlayTyp
 
   /**
    * 공연 정보를 추가합니다.
-   *
-   * @param performance
-   * @returns
    */
   function enrichPerformance(performance: InvoiceType.PerformanceInfo): StatementType.PerformanceInfo {
     const result = Object.assign({}, performance) as StatementType.PerformanceInfo;
@@ -1326,91 +1205,44 @@ export function createStatementData(invoice: InvoiceType.Invoice, plays: PlayTyp
 
     return result;
   }
-
-  /**
-   * performance를 통해 play 값을 구합니다.
-   *
-   * @param performance
-   * @returns
-   */
-  function playFor(performance: InvoiceType.PerformanceInfo): PlayType.PlayInfo {
-    return plays[performance.playID];
-  }
-
-  /**
-   * 청구 내역에 대한 금액을 구합니다.
-   *
-   * @param performance
-   * @returns
-   */
-  function amountFor(performance: StatementType.PerformanceInfo): number {
-    let thisAmount: number = 0;
-    switch (performance.play.type) {
-      case 'tragedy':
-        thisAmount = 40000;
-        if (performance.audience > 30) {
-          thisAmount += 1000 * (performance.audience - 30);
-        }
-        break;
-      case 'comedy':
-        thisAmount = 30000;
-        if (performance.audience > 20) {
-          thisAmount += 10000 + 500 * (performance.audience - 20);
-        }
-        thisAmount += 300 * performance.audience;
-        break;
-      default:
-        throw new Error(`알 수 없는 장르: ${performance.play.type}`);
-    }
-    return thisAmount;
-  }
-
-  /**
-   * totalAmount를 구합니다.
-   *
-   * @returns
-   */
-  function totalAmount(data: StatementType.StatementData) {
-    return data.performances.reduce((total, p) => total + p.amount, 0);
-  }
-
-  /**
-   * volumeCredites를 구합니다.
-   *
-   * @returns
-   */
-  function totalVolumeCredits(data: StatementType.StatementData) {
-    return data.performances.reduce((total, p) => total + p.volumeCredits, 0);
-  }
-
-  /**
-   * 적립 포인트를 계산합니다.
-   *
-   * @param performance
-   * @returns
-   */
-  function volumeCreditsFor(performance: StatementType.PerformanceInfo): number {
-    let volumeCredits = 0;
-    volumeCredits += Math.max(performance.audience - 30, 0);
-
-    if ('comedy' === performance.play.type) {
-      volumeCredits += Math.floor(performance.audience / 5);
-    }
-
-    return volumeCredits;
-  }
 }
 ```
 
-처음보다 코드량은 늘어났지만 모듈화를 통해 각부분이 하는 일과 그 부분들이 맞물려 돌아가는 과정을 파악하기 쉬워졌습니다. 간결함이 지혜의 정수일지 몰라도, 프로그래밍에서 만큼은 명료함이 진화할 수 있는 소프트웨어의 정수입니다.
+> [!NOTE]  
+> **모든 계산 로직이 `createStatementData()`에 모여 있어 유지보수가 쉬워졌습니다.**  
+> - 새로운 요구사항이 추가되더라도, **출력 로직을 수정할 필요 없이**  
+> - **계산 로직만 변경하면 됩니다.**  
 
-그의 증거로 지금 만해도 모듈화한 덕분에 계산 코드를 중복하지 않고도 HTML 버전을 만들 수 있었습니다.
+### **모듈화를 통한 코드 개선**
 
-> 캠필자들에게는 "도착했을 때보다 깔끔하게 정돈하고 떠난다"는 규칙이 있습니다. 프로그래밍도 마찬가지다. 항시 코드베이스를 작업 시작 전보다 건강하게(healthy) 만들어 놓고 떠나야합니다.
+처음보다 코드량은 늘어났지만,  
+**모듈화를 통해 코드의 역할이 명확해졌고 유지보수가 쉬워졌습니다.**
 
-출력 로직을 더 간결하게 만들수도 있겠지만 마틴 파울러는 여기서 한번 멈추는 것을 권장합니다. 그는 항상 리팩터링과 기능 개발 사이의 균형을 맞추려고 합니다. 
+**좋은 코드란 간결한 코드가 아니라, 명료한 코드입니다.** 코드가 명료하면, **수정과 확장이 쉬워집니다.** 또한, 불필요한 코드 중복 없이 **기능을 추가할 수 있습니다.**  
 
-현재의 코드에서 리팩토링이 그다지 절실하게 느껴지지 않을 수 있지만 어느정도 균형점은 찾을 수 있었습니다.
+### **리팩토링을 마친 후의 원칙**
+
+**코드를 개선하는 것은 단순히 줄이는 것이 아닙니다.** 코드를 줄이려고 하면 **가독성과 유지보수성이 떨어질 수 있습니다.** 
+
+오히려 **명확하게 분리하는 것이 더 좋은 코드**입니다.  
+
+> [!NOTE]  
+> **"캠핑장 원칙"을 적용합시다.**  
+> - **"도착했을 때보다 깔끔하게 정돈하고 떠난다."**  
+> - 프로그래밍도 마찬가지로, **작업을 끝낸 후 코드베이스를 더 건강하게 유지해야 합니다.**  
+
+### **리팩토링을 멈출 타이밍**
+
+출력 로직을 더 간결하게 만들 수도 있지만,  
+**마틴 파울러는 여기서 멈추는 것을 추천합니다.**
+
+> [!IMPORTANT]  
+> 리팩토링과 기능 개발 사이의 **균형을 맞추는 것이 중요합니다.**  
+> - 지금 상태에서 코드가 **충분히 개선되었으며 유지보수성이 확보됨**  
+> - 불필요한 리팩토링으로 **더 복잡해질 위험이 있음**  
+
+현재의 코드 상태에서 **기능을 추가해야 할 필요가 있을 때**  
+다시 리팩토링을 고려하는 것이 더 좋은 접근입니다.
 
 ## 1.8 다형성을 활용해 계산 코드 재구성 하기
 
