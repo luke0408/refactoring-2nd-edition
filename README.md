@@ -29,7 +29,7 @@
 - [Chapter 02. 리팩터링 원칙](./document/ch02/README.md)
 - [Chapter 03. 코드에서 나는 악취](./document/ch03/README.md)
 - [Chapter 04. 테스트 구축하기](./document/ch04/README.md)
-- Chapter 05. 리팩터링 카탈로그 보는 법
+- [Chapter 05. 리팩터링 카탈로그 보는 법](./document/ch05/README.md)
 - Chapter 06. 기본적인 리팩터링
 - Chapter 07. 캡슐화
 - Chapter 08. 기능 이동
